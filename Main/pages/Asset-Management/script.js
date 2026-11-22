@@ -1,5 +1,5 @@
-// Array to store assets in memory (for a real app, this would connect to a database)
-let assets = [];
+// Load saved assets from the browser's memory, or start with an empty list
+let assets = JSON.parse(localStorage.getItem('assetData')) || [];
 
 // DOM Elements
 const assetForm = document.getElementById('assetForm');
@@ -68,6 +68,9 @@ function handleFormSubmit(e) {
         assets[editIndex] = assetData;
         showMessage("Asset details updated successfully!", "success");
     }
+
+    // Save the updated list to the browser's local storage
+    localStorage.setItem('assetData', JSON.stringify(assets));
 
     resetForm();
     renderInventory();
