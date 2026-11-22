@@ -1,0 +1,164 @@
+* {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    /* Changed to a soft blue-gray background */
+    background-color: #e9ecef; 
+    margin: 0;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px; /* Added a bit more padding inside */
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1); /* Made the shadow softer and bigger */
+}
+
+/* Centered the main heading and gave it a color */
+h1 {
+    text-align: center;
+    color: #003366; /* Dark blue color */
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+    border-bottom: 3px solid #0056b3; /* Added a line under the heading */
+    padding-bottom: 10px;
+}
+
+h2 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.form-section, .inventory-section {
+    margin-bottom: 40px;
+}
+
+#assetForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px; /* Increased gap slightly */
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+}
+
+.input-group input, .input-group select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+    transition: border-color 0.3s;
+}
+
+/* Makes the input box glow blue when clicked */
+.input-group input:focus, .input-group select:focus {
+    outline: none;
+    border-color: #0056b3;
+    box-shadow: 0 0 5px rgba(0, 86, 179, 0.3);
+}
+
+button {
+    padding: 12px 20px;
+    background-color: #0056b3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 10px;
+    transition: background-color 0.3s, transform 0.1s;
+}
+
+button:hover {
+    background-color: #004494;
+}
+
+button:active {
+    transform: scale(0.98); /* Button shrinks slightly when clicked */
+}
+
+#cancelEditBtn {
+    background-color: #6c757d;
+}
+
+#cancelEditBtn:hover {
+    background-color: #5a6268;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.search-bar input:focus {
+    outline: none;
+    border-color: #0056b3;
+    box-shadow: 0 0 5px rgba(0, 86, 179, 0.3);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+table th, table td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+table th {
+    background-color: #f1f3f5; /* Lighter gray for headers */
+    color: #333;
+    font-weight: bold;
+}
+
+/* Adds a hover effect to table rows */
+table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Messages */
+#messageBox {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.hidden {
+    display: none;
+}

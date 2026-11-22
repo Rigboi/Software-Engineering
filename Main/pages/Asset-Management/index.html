@@ -1,32 +1,99 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Asset Management</h1>
+        
+        <!-- Error / Success Messages -->
+        <div id="messageBox" class="hidden"></div>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{title}}</title>
-  </head>
-  <body>
-    <div id="Table">
-      <table>
-        <thead>
-          <tr>
-            <th>Header 1</th>
-            <th>Header 2</th>
-            <th>Header 3</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{rows}}
-        </tbody>
-      </table>
+        <!-- Form Section (AC-1, AC-2, Scenario 1-4) -->
+        <section class="form-section">
+            <h2 id="formTitle">Create New Asset</h2>
+            <form id="assetForm">
+                <input type="hidden" id="editIndex" value="-1">
+                
+                <div class="input-group">
+                    <label for="tagId">Tag ID *</label>
+                    <input type="text" id="tagId" required placeholder="e.g., TAG-1001">
+                </div>
+                
+                <div class="input-group">
+                    <label for="serialNumber">Serial Number *</label>
+                    <input type="text" id="serialNumber" required placeholder="e.g., SN-998877">
+                </div>
+
+                <div class="input-group">
+                    <label for="deviceType">Type *</label>
+                    <input type="text" id="deviceType" required placeholder="e.g., Laptop, Monitor">
+                </div>
+
+                <div class="input-group">
+                    <label for="purchaseDate">Purchase Date *</label>
+                    <input type="date" id="purchaseDate" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="condition">Condition *</label>
+                    <select id="condition" required>
+                        <option value="">Select Condition</option>
+                        <option value="New">New</option>
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Poor">Poor</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="location">Location *</label>
+                    <input type="text" id="location" required placeholder="e.g., Room 101">
+                </div>
+
+                <div class="input-group">
+                    <label for="warrantyDate">Warranty Date</label>
+                    <input type="date" id="warrantyDate">
+                </div>
+
+                <button type="submit" id="submitBtn">Save Asset</button>
+                <button type="button" id="cancelEditBtn" class="hidden" onclick="resetForm()">Cancel Edit</button>
+            </form>
+        </section>
+
+        <!-- Inventory Section (AC-3, AC-4, Scenario 5-8) -->
+        <section class="inventory-section">
+            <h2>Inventory</h2>
+            
+            <!-- Search / Filter -->
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search by Tag ID or Device Name...">
+            </div>
+
+            <!-- Inventory Table -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tag ID</th>
+                        <th>Serial No.</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Condition</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryList">
+                    <!-- Rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+            <p id="noResults" class="hidden">No matching assets found.</p>
+        </section>
     </div>
-    <div id="Btn1">
-      <button>Button 1</button>
 
-      <button>Button 2</button>
-
-      <button>Button 3</button>
-    </div>
-  </body>
+    <script src="script.js"></script>
+</body>
 </html>
