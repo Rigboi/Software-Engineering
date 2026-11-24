@@ -72,16 +72,3 @@ setUpEmail()
       console.log(`Server running at http://localhost:${PORT}`);
     });
   });
-  
-  // Start the server, even if the email setup fails
-setUpEmail()
-  .catch(error => console.error('Email setup failed:', error.message))
-  .finally(() => {
-    app.listen(PORT, error => {
-      if (error) {
-        console.error('Server could not start:', error.message);
-        return;
-      }
-      console.log(`Server running at http://localhost:${PORT}`);
-    });
-  });
