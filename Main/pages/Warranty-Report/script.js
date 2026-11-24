@@ -66,3 +66,78 @@ function renderDeviceTable() {
 }
 
 renderDeviceTable();
+
+// ===== SR-1: warning days setting =====
+const DEFAULT_WARNING_DAYS = [30, 15, 7, 1];
+
+// Use the saved setting if there is one, otherwise the defaults (AC-1)
+let warningDays = JSON.parse(localStorage.getItem('warningDays')) || DEFAULT_WARNING_DAYS;
+
+const warningInput = document.getElementById('warningDays');
+const settingsMessage = document.getElementById('settingsMessage');
+
+// Show the current setting in the box when the page opens
+warningInput.value = warningDays.join(', ');
+
+function saveWarningDays() {
+  // "60, 30, 7" -> ["60", "30", "7"]
+  const parts = warningInput.value.split(',').map(p => p.trim()).filter(p => p !== '');
+
+  if (parts.length === 0) {
+    settingsMessage.textContent = 'Error: enter at least one number of days.';
+    return;
+  }
+
+  const days = [];
+  for (const part of parts) {
+    const number = Number(part);
+    // TS-2: reject 0, negatives, decimals and letters
+    if (!Number.isInteger(number) || number < 1) {
+      settingsMessage.textContent = `Error: "${part}" is not valid. Use whole numbers of 1 or more.`;
+      return; // stop here, so the previous setting is kept
+    }
+    days.push(number);
+  }
+
+  // Remove duplicates and sort largest first: 60, 30, 7
+  warningDays = [...new Set(days)].sort((a, b) => b - a);
+  localStorage.setItem('warningDays', JSON.stringify(warningDays));
+
+  warningInput.value = warningDays.join(', ');
+  settingsMessage.textContent = 'Warning days saved.';
+  renderAlerts();
+}
+
+document.getElementById('saveDaysBtn').addEventListener('click', saveWarningDays);
+
+// ===== SR-2: the check - find devices exactly on a warning day =====
+function findDevicesToAlert() {
+  return assets.filter(asset => {
+    const days = getDaysRemaining(asset.warrantyDate);
+    return days !== null && warningDays.includes(days);
+  });
+}
+
+// ===== SR-3: show an alert for each device found =====
+function renderAlerts() {
+  const list = document.getElementById('alertList');
+  list.innerHTML = '';
+
+  const devices = findDevicesToAlert();
+
+  if (devices.length === 0) {
+    const item = document.createElement('li');
+    item.textContent = 'No warranty alerts today.';
+    list.appendChild(item);
+    return;
+  }
+
+  devices.forEach(asset => {
+    const days = getDaysRemaining(asset.warrantyDate);
+    const item = document.createElement('li');
+    item.textContent = `${asset.deviceType} (${asset.tagId}): warranty ends ${asset.warrantyDate}, ${days} day(s) left.`;
+    list.appendChild(item);
+  });
+}
+
+renderAlerts();
