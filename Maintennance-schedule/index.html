@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WJC Maintenance Schedule</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1c1f24; --muted:#5f6b7a; --line:#d8dde4; --accent:#1f5fbf; --bad:#b3261e; --badbg:#fde8e6; --ok:#1b6e3a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14171b; --card:#1d2127; --text:#e8ebef; --muted:#9aa5b3; --line:#323a44; --accent:#6ea2ee; --bad:#ff8a80; --badbg:#3a1e1c; --ok:#6fd195; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:Arial, Helvetica, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:900px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:1.4rem; margin:0 0 4px; } .sub { color:var(--muted); margin:0 0 20px; font-size:.9rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; } @media (max-width:600px) { .grid { grid-template-columns:1fr; } }
+  label { display:block; font-size:.85rem; font-weight:bold; margin-bottom:4px; }
+  input, select { width:100%; padding:9px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); font-size:1rem; }
+  input.err { border-color:var(--bad); } .msg { color:var(--bad); font-size:.82rem; margin-top:3px; min-height:1em; }
+  button { padding:9px 16px; border:0; border-radius:6px; background:var(--accent); color:#fff; font-size:.95rem; cursor:pointer; }
+  button.sec { background:transparent; color:var(--accent); border:1px solid var(--accent); } button.small { padding:5px 10px; font-size:.82rem; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+  .banner { padding:10px 12px; border-radius:6px; margin-top:12px; font-size:.9rem; } .banner.bad { background:var(--badbg); color:var(--bad); } .banner.ok { color:var(--ok); }
+  .scroll { overflow-x:auto; } table { width:100%; border-collapse:collapse; min-width:640px; }
+  th, td { text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); font-size:.9rem; vertical-align:middle; } th { color:var(--muted); font-size:.8rem; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:.75rem; font-weight:bold; margin-left:6px; background:var(--badbg); color:var(--bad); border:1px solid var(--bad); }
+  .st-Completed { color:var(--ok); font-weight:bold; } tr.overdue td { background:var(--badbg); }
+  .empty { color:var(--muted); padding:20px 0; text-align:center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Maintenance Schedule</h1>
+  <p class="sub">WJC IT Asset Management System &middot; Feature 06</p>
+
+  <div class="card">
+    <div class="grid">
+      <div><label for="user">Signed in as</label><input id="user" value="MITS Staff"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="formTitle" style="font-size:1.05rem;margin:0 0 12px">New maintenance task</h2>
+    <div class="grid">
+      <div><label for="description">Description</label><input id="description" placeholder="e.g. Replace Laptop battery"><div class="msg" id="e-description"></div></div>
+      <div><label for="equipment">Asset Tag ID or facility</label><input id="equipment" list="assetList" placeholder="e.g. TAG-1001"><datalist id="assetList"></datalist><div class="msg" id="e-equipment"></div></div>
+      <div><label for="scheduled_date">Scheduled date (YYYY-MM-DD)</label><input id="scheduled_date" placeholder="2026-11-05"><div class="msg" id="e-scheduled_date"></div></div>
+      <div><label for="assigned_staff">Assigned staff member</label><input id="assigned_staff" placeholder="e.g. J. Brown"><div class="msg" id="e-assigned_staff"></div></div>
+    </div>
+    <div class="row"><button id="save">Save task</button><button id="cancel" class="sec" hidden>Cancel edit</button></div>
+    <div id="banner"></div>
+  </div>
+
+  <div class="card">
+    <div class="scroll"><table>
+      <thead><tr><th>Description</th><th>Asset / facility</th><th>Scheduled date</th><th>Assigned staff</th><th>Status</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div id="empty" class="empty" hidden></div>
+  </div>
+</main>
+<script>
+const FIELDS = ['description', 'equipment', 'scheduled_date', 'assigned_staff'];
+const $ = (id) => document.getElementById(id);
+let editingId = null;
+const SERVER_HELP = 'Cannot reach the maintenance server. Start it with "npm start" and open this page at http://localhost:3001 (not by double-clicking the file).';
+
+const headers = () => ({ 'Content-Type': 'application/json', 'X-User': $('user').value.trim() });
+function clearErrors() { FIELDS.forEach((f) => { $('e-' + f).textContent = ''; $(f).classList.remove('err'); }); $('banner').innerHTML = ''; }
+function banner(text, cls) { const d = document.createElement('div'); d.className = 'banner ' + cls; d.textContent = text; $('banner').replaceChildren(d); }
+
+async function loadAssets() {
+  try { const r = await fetch('/api/maintenance/assets', { headers: headers() }); if (!r.ok) return; const b = await r.json();
+    $('assetList').replaceChildren(...b.assets.map((a) => { const o = document.createElement('option'); o.value = a.tag_id; o.label = a.device_name; return o; })); } catch (e) { /* suggestions are optional */ }
+}
+
+async function load() {
+  let res, body;
+  try { res = await fetch('/api/maintenance', { headers: headers() }); body = await res.json(); }
+  catch (e) { $('empty').hidden = false; $('empty').textContent = SERVER_HELP; return; }
+  const tbody = $('rows'); tbody.replaceChildren();
+  if (!res.ok) { $('empty').hidden = false; $('empty').textContent = body.message; return; }
+  $('empty').hidden = !body.message; $('empty').textContent = body.message || '';
+  for (const t of body.tasks) {
+    const tr = document.createElement('tr'); if (t.overdue) tr.className = 'overdue';
+    const cells = [t.description, t.equipment, t.scheduled_date, t.assigned_staff];
+    cells.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v;
+      if (i === 1 && t.asset) { const n = document.createElement('div'); n.style.cssText = 'color:var(--muted);font-size:.8rem'; n.textContent = t.asset.device_name; td.append(n); }
+      if (i === 2 && t.overdue) { const s = document.createElement('span'); s.className = 'tag'; s.textContent = 'Overdue'; td.append(s); } tr.append(td); });
+    const st = document.createElement('td'); const sel = document.createElement('select'); sel.className = 'st-' + t.status; sel.setAttribute('aria-label', 'Status');
+    ['Pending', 'Completed'].forEach((s) => { const o = document.createElement('option'); o.value = o.textContent = s; o.selected = s === t.status; sel.append(o); });
+    sel.onchange = () => send('PATCH', t.id, { status: sel.value }); st.append(sel); tr.append(st);
+    const act = document.createElement('td'); const eb = document.createElement('button'); eb.className = 'sec small'; eb.textContent = 'Edit'; eb.onclick = () => startEdit(t); act.append(eb); tr.append(act);
+    tbody.append(tr);
+  }
+}
+
+async function send(method, id, data) {
+  clearErrors();
+  let res, body;
+  try { res = await fetch('/api/maintenance' + (id ? '/' + id : ''), { method, headers: headers(), body: JSON.stringify(data) }); body = await res.json(); }
+  catch (e) { banner(SERVER_HELP, 'bad'); return false; }
+  if (res.ok) { banner(id ? 'Task updated.' : 'Task saved.', 'ok'); if (!id || editingId) resetForm(); await load(); return true; }
+  if (body.errors) { body.errors.forEach((e) => { const m = $('e-' + e.field); if (m) { m.textContent = e.message; $(e.field).classList.add('err'); } }); banner('Nothing was saved. Please fix the highlighted field(s).', 'bad'); }
+  else banner(body.message, 'bad');
+  await load(); return false;
+}
+
+function startEdit(t) { editingId = t.id; FIELDS.forEach((f) => ($(f).value = t[f])); $('formTitle').textContent = 'Edit maintenance task'; $('cancel').hidden = false; clearErrors(); scrollTo({ top: 0, behavior: 'smooth' }); }
+function resetForm() { editingId = null; FIELDS.forEach((f) => ($(f).value = '')); $('formTitle').textContent = 'New maintenance task'; $('cancel').hidden = true; }
+$('cancel').onclick = () => { resetForm(); clearErrors(); };
+$('save').onclick = () => { const data = Object.fromEntries(FIELDS.map((f) => [f, $(f).value])); send(editingId ? 'PATCH' : 'POST', editingId, data); };
+$('user').onchange = () => { load(); loadAssets(); };
+load(); loadAssets();
+</script>
+</body>
+</html>
