@@ -220,3 +220,60 @@ function downloadPdfReport() {
 }
 
 document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdfReport);
+
+// ===== SR-4: email the MITS department through the server =====
+function todayString() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`; // YYYY-MM-DD, local time
+}
+
+async function sendWarrantyEmail() {
+  const emailStatus = document.getElementById('emailStatus');
+
+  // Only send the details the email needs (data minimisation)
+  const devices = findDevicesToAlert().map(asset => ({
+    tagId: asset.tagId,
+    deviceType: asset.deviceType,
+    warrantyDate: asset.warrantyDate
+  }));
+
+  if (devices.length === 0) {
+    emailStatus.textContent = 'No email sent: no devices reached a warning day.'; // TS-8
+    return;
+  }
+
+  emailStatus.textContent = 'Sending email to MITS...';
+
+  try {
+    const response = await fetch('/api/warranty-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ devices })
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      emailStatus.textContent = 'Email could not be sent: ' + result.error;
+      return;
+    }
+
+    localStorage.setItem('lastWarrantyEmail', todayString());
+    emailStatus.textContent = 'Email sent to MITS. ';
+    const link = document.createElement('a');
+    link.href = result.previewUrl;
+    link.target = '_blank';
+    link.textContent = 'View the email';
+    emailStatus.appendChild(link);
+  } catch (error) {
+    emailStatus.textContent = 'Email could not be sent: the server is not running.';
+  }
+}
+
+// Send automatically, once per day, only when there are alerts
+if (findDevicesToAlert().length > 0 && localStorage.getItem('lastWarrantyEmail') !== todayString()) {
+  sendWarrantyEmail();
+}
+
+document.getElementById('sendEmailBtn').addEventListener('click', sendWarrantyEmail);
