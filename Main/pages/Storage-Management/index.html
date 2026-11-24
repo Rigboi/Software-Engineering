@@ -1,32 +1,131 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage Management | WJC MITS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{title}}</title>
-  </head>
-  <body>
-    <div id="Table">
-      <table>
-        <thead>
-          <tr>
-            <th>Header 1</th>
-            <th>Header 2</th>
-            <th>Header 3</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{rows}}
-        </tbody>
-      </table>
-    </div>
-    <div id="Btn1">
-      <button>Button 1</button>
+<body>
+    <header>
+        <h1>Storage Management</h1>
+        <p>WJC MITS - IT Asset Management System</p>
+    </header>
 
-      <button>Button 2</button>
+    <main>
 
-      <button>Button 3</button>
-    </div>
-  </body>
+        <!-- Asset Relocation Section -->
+        <section id="relocation-section">
+            <h2>Relocate an Asset</h2>
+            <p>Update the storage location of an existing IT asset.</p>
+
+            <form id="relocation-form">
+
+                <div class="form-group">
+                    <label for="asset-select">Select Asset:</label>
+                    <select id="asset-select" required>
+                        <option value="">Select an asset</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="current-location">Current Location:</label>
+                    <input type="text" id="current-location"
+                        placeholder="Current location will appear here" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="destination">New Storage Location:</label>
+                    <select id="destination" required>
+                        <option value="">Select a destination</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="staff-member">Responsible Staff Member:</label>
+                    <input type="text" id="staff-member"
+                        placeholder="Enter staff member's name" required>
+                </div>
+
+                <button type="submit">Save Relocation</button>
+
+                <p id="relocation-message" role="status" aria-live="polite"></p>
+
+            </form>
+        </section>
+
+
+        <!-- Search Assets Section -->
+        <section id="search-section">
+            <h2>Search Assets by Location</h2>
+            <p>Find all assets currently recorded at a selected location.</p>
+
+            <div class="form-group">
+                <label for="location-search">Storage Location:</label>
+                <select id="location-search">
+                    <option value="">Select a location</option>
+                </select>
+            </div>
+
+            <button type="button" id="search-button">Search</button>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Asset Identifier</th>
+                            <th>Description</th>
+                            <th>Current Location</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="asset-results">
+                        <tr>
+                            <td colspan="3">Select a location to view its assets.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <!-- Relocation History Section -->
+        <section id="history-section">
+            <h2>Relocation History</h2>
+            <p>View the previous movements of an IT asset.</p>
+
+            <div class="form-group">
+                <label for="history-asset">Select Asset:</label>
+                <select id="history-asset">
+                    <option value="">Select an asset</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Previous Location</th>
+                            <th>New Location</th>
+                            <th>Relocation Date</th>
+                            <th>Responsible Staff</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="history-results">
+                        <tr>
+                            <td colspan="4">Select an asset to view its relocation history.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="code.js"></script>
+</body>
 </html>
+

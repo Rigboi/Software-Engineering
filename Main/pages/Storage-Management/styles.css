@@ -1,0 +1,161 @@
+
+/* General page styling */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f4f6f9;
+    color: #263445;
+    line-height: 1.6;
+}
+
+/* Page header */
+header {
+    background-color: #17365d;
+    color: white;
+    padding: 28px 8%;
+}
+
+header h1 {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+header p {
+    color: #d9e4f2;
+}
+
+/* Main content */
+main {
+    width: 90%;
+    max-width: 1100px;
+    margin: 30px auto;
+}
+
+/* Content sections */
+section {
+    background-color: white;
+    padding: 25px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+section h2 {
+    color: #17365d;
+    margin-bottom: 8px;
+    font-size: 21px;
+}
+
+section > p {
+    color: #667085;
+    margin-bottom: 20px;
+}
+
+/* Form elements */
+.form-group {
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 7px;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 15px;
+    background-color: white;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: #2d6ca2;
+    box-shadow: 0 0 0 2px rgba(45, 108, 162, 0.12);
+}
+
+input[readonly] {
+    background-color: #f1f4f8;
+}
+
+/* Buttons */
+button {
+    background-color: #2463a6;
+    color: white;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 5px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #174b83;
+}
+
+/* Status messages */
+#relocation-message {
+    margin-top: 12px;
+    font-weight: bold;
+}
+
+/* Tables */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 18px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 550px;
+}
+
+th,
+td {
+    padding: 13px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+th {
+    background-color: #eaf0f7;
+    color: #17365d;
+    font-weight: bold;
+}
+
+tbody tr:hover {
+    background-color: #f7f9fc;
+}
+
+/* Smaller screens */
+@media (max-width: 600px) {
+    header {
+        padding: 22px 5%;
+    }
+
+    header h1 {
+        font-size: 23px;
+    }
+
+    main {
+        width: 94%;
+        margin: 18px auto;
+    }
+
+    section {
+        padding: 18px;
+    }
+}
