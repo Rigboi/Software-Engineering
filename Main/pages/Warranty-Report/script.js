@@ -141,3 +141,82 @@ function renderAlerts() {
 }
 
 renderAlerts();
+
+// ===== PDF report: fill the device type filter from the real assets =====
+function fillDeviceTypeFilter() {
+  const select = document.getElementById('filterType');
+  // Collect each device type once: ["Laptop", "Microphone", "Projector"]
+  const types = [...new Set(assets.map(asset => asset.deviceType))].sort();
+
+  types.forEach(type => {
+    const option = document.createElement('option');
+    option.value = type;
+    option.textContent = type;
+    select.appendChild(option);
+  });
+}
+
+fillDeviceTypeFilter();
+
+// ===== PDF report: keep only the assets that match the chosen filters =====
+function getFilteredAssets(condition, type, from, to) {
+  return assets.filter(asset => {
+    if (condition && asset.condition !== condition) return false;
+    if (type && asset.deviceType !== type) return false;
+    if (from || to) {
+      if (!asset.warrantyDate) return false; // no date can't fall inside a date range
+      if (from && asset.warrantyDate < from) return false;
+      if (to && asset.warrantyDate > to) return false;
+    }
+    return true;
+  });
+}
+
+// ===== PDF report: build the file and download it =====
+function downloadPdfReport() {
+  const reportMessage = document.getElementById('reportMessage');
+  const condition = document.getElementById('filterCondition').value;
+  const type = document.getElementById('filterType').value;
+  const from = document.getElementById('filterFrom').value;
+  const to = document.getElementById('filterTo').value;
+
+  if (from && to && from > to) {
+    reportMessage.textContent = 'Error: the "from" date must be before the "to" date.';
+    return;
+  }
+
+  const filtered = getFilteredAssets(condition, type, from, to);
+
+  if (filtered.length === 0) {
+    reportMessage.textContent = 'No assets match these filters, so no report was created.';
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('WJC IT Asset Summary Report', 14, 15);
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}    Assets listed: ${filtered.length}`, 14, 22);
+
+  const rows = filtered.map(asset => [
+    asset.tagId,
+    asset.deviceType,
+    asset.serialNumber,
+    asset.condition,
+    asset.warrantyDate || 'Not recorded',
+    getStatus(getDaysRemaining(asset.warrantyDate))
+  ]);
+
+  doc.autoTable({
+    head: [['Tag ID', 'Device Type', 'Serial Number', 'Condition', 'Warranty End Date', 'Status']],
+    body: rows,
+    startY: 28
+  });
+
+  doc.save('warranty-report.pdf');
+  reportMessage.textContent = `Report downloaded with ${filtered.length} asset(s).`;
+}
+
+document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdfReport);

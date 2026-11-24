@@ -46,9 +46,34 @@
     <!-- PDF report (from the SRS performance requirements) -->
     <section id="report">
       <h2>PDF Report</h2>
-      <button id="downloadPdfBtn">Download PDF Report</button>
-    </section>
 
+      <label for="filterCondition">Condition:</label>
+      <select id="filterCondition">
+        <option value="">All</option>
+        <option value="New">New</option>
+        <option value="Good">Good</option>
+        <option value="Fair">Fair</option>
+        <option value="Poor">Poor</option>
+      </select>
+
+      <label for="filterType">Device type:</label>
+      <select id="filterType">
+        <option value="">All</option>
+      </select>
+
+      <label for="filterFrom">Warranty ends from:</label>
+      <input type="date" id="filterFrom" />
+
+      <label for="filterTo">to:</label>
+      <input type="date" id="filterTo" />
+
+      <button id="downloadPdfBtn">Download PDF Report</button>
+      <p id="reportMessage"></p>
+    </section>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
+
