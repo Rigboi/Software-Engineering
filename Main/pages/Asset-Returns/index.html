@@ -1,32 +1,37 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{title}}</title>
-  </head>
-  <body>
-    <div id="Table">
-      <table>
-        <thead>
-          <tr>
-            <th>Header 1</th>
-            <th>Header 2</th>
-            <th>Header 3</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{rows}}
-        </tbody>
-      </table>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asset Returns | WJC MITS</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="return-model.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header><div class="header-inner"><span>WJC MITS</span><nav aria-label="Main navigation"><a href="../Asset-Management/index.html">Inventory</a><a href="../Storage-Management/index.html">Storage</a><a href="../Asset-Borrowing/loaning.html">Borrowing</a><a href="index.html" aria-current="page">Returns</a></nav></div></header>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow">IT ASSET MANAGEMENT</p><h1>Asset returns</h1><p>Find a loan, inspect the equipment, and record its return.</p></div><button id="refresh" class="secondary" type="button">Refresh records</button></div>
+    <div id="mode-note" class="notice" role="status"></div>
+    <p id="message" role="status" aria-live="polite" hidden></p>
+    <div class="summary" aria-label="Loan summary"><div><span>Outstanding loans</span><strong id="outstanding-count">—</strong></div><div><span>Overdue loans</span><strong id="overdue-count">—</strong></div><div><span>Recorded returns</span><strong id="returns-count">—</strong></div></div>
+    <div class="workspace">
+      <section class="panel"><div class="section-heading"><h2>Outstanding loans</h2><span id="result-count"></span></div><label for="loan-search">Search asset tag, name, borrower, or ID</label><input id="loan-search" type="search" placeholder="e.g. WJC-001 or borrower name">
+        <div class="table-wrap"><table><caption class="sr-only">Outstanding equipment loans</caption><thead><tr><th>Asset / borrower</th><th>Due date</th><th>Status</th><th>Action</th></tr></thead><tbody id="loan-list"></tbody></table></div>
+      </section>
+      <section class="panel return-panel"><h2>Record a return</h2><p id="selection-help">Select an outstanding loan to begin.</p><dl id="loan-details" hidden></dl>
+        <form id="return-form"><fieldset id="return-fields" disabled><legend class="sr-only">Return inspection</legend>
+          <label for="return-condition">Condition on return *</label><select id="return-condition" required><option value="">Select condition</option><option>New</option><option>Good</option><option>Fair</option><option>Poor</option></select>
+          <label for="return-status">Next asset status *</label><select id="return-status" required><option value="Available">Available</option><option value="Sent for Repair">Sent for Repair</option></select><p class="hint">Choose Sent for Repair if the equipment is not ready to lend again.</p>
+          <label for="return-notes">Inspection notes</label><textarea id="return-notes" rows="3" maxlength="1000" placeholder="Damage, missing accessories, or other observations"></textarea>
+          <div id="demo-staff-field" hidden><label for="demo-staff">Demo staff name *</label><input id="demo-staff" maxlength="100" placeholder="e.g. J. Brown"></div>
+          <label class="checkbox"><input id="physical-confirmation" type="checkbox" required><span>I have received and inspected this asset.</span></label>
+          <button id="save-return" type="submit">Confirm return</button><button id="cancel-return" class="secondary" type="button">Cancel</button>
+        </fieldset></form>
+      </section>
     </div>
-    <div id="Btn1">
-      <button>Button 1</button>
-
-      <button>Button 2</button>
-
-      <button>Button 3</button>
-    </div>
-  </body>
+    <section class="panel history-panel"><div class="section-heading"><div><h2>Return history</h2><p>Completed check-ins and their inspection records.</p></div><div><label for="history-search">Search return history</label><input id="history-search" type="search" placeholder="Asset, borrower, or staff"></div></div><div class="table-wrap"><table><caption class="sr-only">Completed asset returns</caption><thead><tr><th>Returned</th><th>Asset / borrower</th><th>Condition</th><th>Next status</th><th>Recorded by</th><th>Email</th><th>Notes</th></tr></thead><tbody id="history-list"></tbody></table></div></section>
+    <footer><button id="demo-toggle" class="link-button" type="button">Try with sample loans</button><span>WJC IT Department</span></footer>
+  </main>
+</body>
 </html>
