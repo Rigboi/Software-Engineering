@@ -1,0 +1,12 @@
+{
+  "name": "wjc-asset-management",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test server/test/*.test.js Main/pages/Maintennance-schedule/test/*.test.js Main/pages/Asset-Returns/returnFeature.test.js"
+  },
+  "dependencies": { "express": "^5.3.0", "nodemailer": "^10.6.1" }
+}

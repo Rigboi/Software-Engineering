@@ -1,7 +1,0 @@
-{
-  "name": "maintenance-schedule",
-  "version": "1.0.0",
-  "description": "Feature 06 - Maintenance Scheduling (WJC IT Asset Management System)",
-  "scripts": { "start": "node --no-warnings src/server.js", "test": "node --no-warnings --test \"test/*.test.js\"" },
-  "engines": { "node": ">=22.5" }
-}
