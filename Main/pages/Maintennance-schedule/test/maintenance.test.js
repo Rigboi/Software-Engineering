@@ -149,7 +149,7 @@ test('a rejected update changes nothing (no partial update)', () => {
 
 test('HTTP API: 401 without sign-in, 400 names the field, 201 on success, empty message', async () => {
   const { createServer } = require('../src/server');
-  const server = createServer(openDatabase(':memory:'), () => TODAY);
+  const server = createServer(openDatabase(':memory:'), () => TODAY, req => req.headers['x-user'] ? { ok: true, user: req.headers['x-user'] } : { ok: false, status: 401, message: 'Please log in.' });
   await new Promise((r) => server.listen(0, r));
   const base = `http://127.0.0.1:${server.address().port}/api/maintenance`;
   const H = { 'Content-Type': 'application/json', 'X-User': 'jsmith' };

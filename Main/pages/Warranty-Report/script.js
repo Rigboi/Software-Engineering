@@ -261,6 +261,7 @@ async function sendWarrantyEmail() {
 
     localStorage.setItem('lastWarrantyEmail', todayString());
     emailStatus.textContent = 'Email sent to MITS. ';
+    if (!result.previewUrl) return;
     const link = document.createElement('a');
     link.href = result.previewUrl;
     link.target = '_blank';

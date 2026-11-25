@@ -1,0 +1,69 @@
+/* Shared navigation. Scoped selectors keep component styles independent. */
+#wjc-navigation {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 24px;
+  padding: 16px 20px;
+  border: 0;
+  border-radius: 6px;
+  background: #003366;
+  color: #fff;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: left;
+}
+#wjc-navigation .wjc-nav-brand {
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: .06em;
+}
+#wjc-navigation .wjc-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+#wjc-navigation a {
+  display: inline-block;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  font-size: .9375rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+}
+#wjc-navigation a:hover {
+  background: #174d80;
+  color: #fff;
+  text-decoration: underline;
+}
+#wjc-navigation a[aria-current="page"] {
+  background: #fff;
+  color: #003366;
+}
+#wjc-navigation a:focus-visible {
+  outline: 3px solid #ffdc76;
+  outline-offset: 3px;
+}
+@media (max-width: 650px) {
+  #wjc-navigation { align-items: flex-start; flex-direction: column; gap: 10px; padding: 14px; }
+  #wjc-navigation .wjc-nav-links { width: 100%; }
+  #wjc-navigation a { padding: 10px; }
+}
+
+#wjc-navigation .wjc-account-name { color: #dce8f5; font-size: .875rem; padding: 9px 8px; }
+#wjc-navigation .wjc-logout { margin: 0; border: 1px solid #b9cfe3; border-radius: 4px; background: transparent; color: white; padding: 8px 12px; font: inherit; font-size: .9375rem; cursor: pointer; }
+#wjc-navigation .wjc-logout:hover { background: #174d80; }
+#wjc-navigation .wjc-logout:focus-visible { outline: 3px solid #ffdc76; outline-offset: 3px; }

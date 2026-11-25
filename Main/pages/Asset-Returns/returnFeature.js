@@ -4,13 +4,16 @@ const { validateReturn } = require('./return-model');
 // Mount with the SAME SQLite database as Asset-Borrowing/loanFeature.js.
 // Pass a dedicated SQLite connection to keep transaction ownership isolated.
 module.exports = function registerReturns(app, db, options = {}) {
-  const router = options.router || require('express').Router();
-  const json = options.json || require('express').json;
+  const router = options.router || (options.express || require('express')).Router();
+  const json = options.json || (options.express || require('express')).json;
   const run = (sql, values = []) => new Promise((resolve, reject) => db.run(sql, values, function (error) { error ? reject(error) : resolve({ changes: this.changes, lastID: this.lastID }); }));
   const all = (sql, values = []) => new Promise((resolve, reject) => db.all(sql, values, (error, rows) => error ? reject(error) : resolve(rows)));
   const get = async (sql, values) => (await all(sql, values))[0];
   let queue = Promise.resolve();
-  function exclusive(action) { const task = queue.then(action); queue = task.catch(() => {}); return task; }
+  function exclusive(action) {
+    if (options.exclusive) return options.exclusive(action);
+    const task = queue.then(action); queue = task.catch(() => {}); return task;
+  }
   const ready = exclusive(async () => {
     await run(`CREATE TABLE IF NOT EXISTS Assets (assetID TEXT PRIMARY KEY, assetName TEXT, status TEXT DEFAULT 'Available')`);
     const columns = await all('PRAGMA table_info(Assets)');

@@ -2,9 +2,9 @@
 
 Node.js server + SQLite database (built-in `node:sqlite`, Node 22.5 or newer, nothing to install), as in SRS 1.4 and the SDS.
 
-    cd Main/pages/Maintennance-schedule
-    npm test      # TS-01 to TS-13 (+3 extra checks)
-    npm start     # http://localhost:3001  (port 3000 is used by the group's other pages)
+From the repository root, run `npm install`, then `npm start`.
+Open http://localhost:3000/maintenance. Run `npm test` from the root for all features.
+The standalone src/server.js remains available for tests, but is not a second application launcher.
 
 Modules (SDS 3.1): `src/maintenanceRules.js` (validation + Overdue rule), `src/maintenanceService.js`,
 `src/maintenanceRoutes.js`, `src/auth.js` (stand-in until the group's authentication exists),

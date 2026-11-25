@@ -18,6 +18,11 @@ function updateHtmlFiles(directory) {
       file.isFile() &&
       path.extname(file.name).toLowerCase() === ".html"
     ) {
+      const existing = fs.readFileSync(filePath, "utf8");
+      if (existing.trim()) {
+        console.log(`Skipped existing page: ${filePath}`);
+        continue;
+      }
       fs.writeFileSync(filePath, template, "utf8");
       console.log(`Updated: ${filePath}`);
     }

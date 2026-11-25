@@ -4,8 +4,8 @@ const { createMaintenanceService } = require('./maintenanceService');
 const { createHandler } = require('./maintenanceRoutes');
 const { authorize } = require('./auth');
 
-function createServer(db, clock) {
-  return http.createServer(createHandler(createMaintenanceService(db, clock), authorize));
+function createServer(db, clock, authorizeRequest = authorize) {
+  return http.createServer(createHandler(createMaintenanceService(db, clock), authorizeRequest));
 }
 module.exports = { createServer };
 

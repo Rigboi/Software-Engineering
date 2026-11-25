@@ -97,16 +97,18 @@ function renderInventory(filterText = "") {
         const originalIndex = assets.findIndex(a => a.tagId === asset.tagId);
 
         const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${asset.tagId}</td>
-            <td>${asset.serialNumber}</td>
-            <td>${asset.deviceType}</td>
-            <td>${asset.location}</td>
-            <td>${asset.condition}</td>
-            <td>
-                <button onclick="editAsset(${originalIndex})" style="padding: 5px 10px; font-size: 12px;">Edit</button>
-            </td>
-        `;
+        for (const value of [asset.tagId, asset.serialNumber, asset.deviceType, asset.location, asset.condition]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+        }
+        const actions = document.createElement('td');
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => editAsset(originalIndex));
+        actions.appendChild(editButton);
+        row.appendChild(actions);
         inventoryList.appendChild(row);
     });
 }

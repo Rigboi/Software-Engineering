@@ -2,6 +2,12 @@
   "name": "maintenance-schedule",
   "version": "1.0.0",
   "description": "Feature 06 - Maintenance Scheduling (WJC IT Asset Management System)",
-  "scripts": { "start": "node --no-warnings src/server.js", "test": "node --no-warnings --test \"test/*.test.js\"" },
-  "engines": { "node": ">=22.5" }
+  "scripts": {
+    "start": "node ../server/server.js",
+    "dev": "node --watch ../server/server.js",
+    "test": "node --test pages/Maintennance-schedule/test/*.test.js pages/Asset-Returns/returnFeature.test.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
 }

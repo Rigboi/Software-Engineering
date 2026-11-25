@@ -7,9 +7,22 @@
   <link rel="stylesheet" href="style.css">
   <script src="return-model.js" defer></script>
   <script src="script.js" defer></script>
+  <link rel="stylesheet" href="/Assets/navigation.css">
+  <script src="/Assets/auth-session.js" defer></script>
 </head>
 <body>
-  <header><div class="header-inner"><span>WJC MITS</span><nav aria-label="Main navigation"><a href="../Asset-Management/index.html">Inventory</a><a href="../Storage-Management/index.html">Storage</a><a href="../Asset-Borrowing/loaning.html">Borrowing</a><a href="index.html" aria-current="page">Returns</a></nav></div></header>
+<nav id="wjc-navigation" aria-label="Main navigation">
+  <span class="wjc-nav-brand">WJC MITS</span>
+  <div class="wjc-nav-links">
+    <a href="/pages/Asset-Management/index.html">Asset Management</a>
+    <a href="/pages/Storage-Management/index.html">Storage</a>
+    <a href="/pages/Asset-Borrowing/loaning.html">Borrowing</a>
+    <a href="/pages/Asset-Returns/index.html" aria-current="page">Returns</a>
+    <a href="/pages/Warranty-Report/index.html">Warranty</a>
+    <a href="/pages/Maintennance-schedule/index.html">Maintenance</a>
+  </div>
+</nav>
+  
   <main>
     <div class="page-heading"><div><p class="eyebrow">IT ASSET MANAGEMENT</p><h1>Asset returns</h1><p>Find a loan, inspect the equipment, and record its return.</p></div><button id="refresh" class="secondary" type="button">Refresh records</button></div>
     <div id="mode-note" class="notice" role="status"></div>

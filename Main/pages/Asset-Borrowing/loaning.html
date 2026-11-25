@@ -1,32 +1,271 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Asset Loaning - WJC MITS</title>
+    <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/Assets/navigation.css">
+  <script src="/Assets/auth-session.js" defer></script>
+</head>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{title}}</title>
-  </head>
-  <body>
-    <div id="Table">
-      <table>
-        <thead>
-          <tr>
-            <th>Header 1</th>
-            <th>Header 2</th>
-            <th>Header 3</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{rows}}
-        </tbody>
-      </table>
+<body>
+<nav id="wjc-navigation" aria-label="Main navigation">
+  <span class="wjc-nav-brand">WJC MITS</span>
+  <div class="wjc-nav-links">
+    <a href="/pages/Asset-Management/index.html">Asset Management</a>
+    <a href="/pages/Storage-Management/index.html">Storage</a>
+    <a href="/pages/Asset-Borrowing/loaning.html" aria-current="page">Borrowing</a>
+    <a href="/pages/Asset-Returns/index.html">Returns</a>
+    <a href="/pages/Warranty-Report/index.html">Warranty</a>
+    <a href="/pages/Maintennance-schedule/index.html">Maintenance</a>
+  </div>
+</nav>
+    
+<header>
+    <h1>Asset Loaning - Today's Date: <span id="today"></span></h1>
+</header>
+
+<main>
+
+    <section>
+        <h2>Check Out Equipment</h2>
+
+        <label for="assetID">Asset tag</label>
+        <select id="assetID"></select>
+
+        <label for="borrowerName">Borrower name</label>
+        <input id="borrowerName" placeholder="Jhon Doe">
+
+        <label for="borrowerID">Borrower ID#</label>
+        <input id="borrowerID" placeholder="620134355">
+
+        <label for="borrowerEmail">Borrower email</label>
+        <input id="borrowerEmail" type="email" placeholder="jhondoe@uwi.edu">
+
+        <label for="dueDate">Expected return date</label>
+        <input id="dueDate" type="date">
+
+        <button id="checkoutBtn">Check out</button>
+        <div id="message"></div>
+
+    </section>
+
+    <div>
+
+        <section style="margin-bottom: 20px;">
+
+            <h2>Equipment status</h2>
+
+            <p><strong>Available:</strong> <span id="countAvailable">0</span></p>
+            <p><strong>On Loan:</strong> <span id="countOnLoan">0</span></p>
+            <p><strong>Missing:</strong> <span id="countMissing">0</span></p>
+            <p id="flaggedList" class="flag"></p>
+        </section>
+
+        <section>
+            <h2>Loan History</h2>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input id="searchBox" placeholder="Search borrower name ">
+                <button id="searchBtn" style="width: auto;">Search</button>
+                <button id="showAllBtn" style="width: auto; background: gray;">Show All </button>
+            </div>
+
+             <div style="overflow-x: auto;">
+                <table id="loansTable">
+                    <!-- Data goes here -->
+                </table>
+            </div>
+            <p id="noLoans"></p>
+
+        </section>
+
+
     </div>
-    <div id="Btn1">
-      <button>Button 1</button>
 
-      <button>Button 2</button>
+</main>
 
-      <button>Button 3</button>
-    </div>
-  </body>
+<script>
+  
+    function getElement(id) {
+        return document.getElementById(id);
+    }
+
+    // --- 1. LOAD DATA FROM THE SERVER ---
+
+    //loads the summary counts and fills the asset dropdown
+    async function loadSummary() {
+        const response = await fetch('/api/loans/summary');
+        const data = await response.json();
+
+        getElement('today').textContent = data.today;
+        getElement('countAvailable').textContent = data.counts['Available'];
+        getElement('countOnLoan').textContent = data.counts['On Loan'];
+        getElement('countMissing').textContent = data.counts['Missing'];
+
+        
+        const names = data.flagged.map(item => item.borrowerName + ' (' + item.borrowerID + ')');
+        getElement('flaggedList').textContent = names.length > 0 ? 'Overdue Borrowers: ' + names.join(', ') : '';
+
+        
+        const assetResponse = await fetch('/api/loans/assets');
+        const assets = await assetResponse.json();
+        const dropdown = getElement('assetID');
+        dropdown.innerHTML = '<option value="">Choose an asset...</option>';
+        
+        let groupedAssets = {};
+        assets.forEach(asset => {
+            if (!groupedAssets[asset.assetName]) {
+                groupedAssets[asset.assetName] = [];
+            }
+            groupedAssets[asset.assetName].push(asset);
+        });
+
+        
+        for (let deviceType in groupedAssets) {
+            let group = document.createElement('optgroup');
+            group.label = deviceType; // e.g., "Dell Laptop"
+
+            
+            groupedAssets[deviceType].forEach(asset => {
+                
+                let text = asset.assetID + (asset.status === 'Available' ? '' : ' (' + asset.status + ')');
+                let option = new Option(text, asset.assetID);
+                if (asset.status !== 'Available') {
+                    option.disabled = true;
+                }
+                group.append(option);
+            });
+
+            dropdown.append(group);
+        }
+    }
+
+    // Loads the table of loans
+    let currentSearchText = '';
+
+    async function loadLoans() {
+        const response = await fetch('/api/loans/history?search=' + currentSearchText);
+        const loans = await response.json();
+        
+        const table = getElement('loansTable');
+        table.innerHTML = ''; 
+        getElement('noLoans').textContent = '';
+
+        if (loans.length === 0) {
+            getElement('noLoans').textContent = "No loans found.";
+            return;
+        }
+
+       
+        let headerRow = table.insertRow();
+        let headers = ['Asset', 'Borrower', 'ID#', 'Due Date', 'Status', 'Action'];
+        for (let i = 0; i < headers.length; i++) {
+            let th = document.createElement('th');
+            th.textContent = headers[i];
+            headerRow.append(th);
+        }
+
+       
+        for (let i = 0; i < loans.length; i++) {
+            let loan = loans[i];
+            let row = table.insertRow();
+
+            row.insertCell().textContent = loan.assetName + ' (' + loan.assetID + ')';
+            
+            let nameCell = row.insertCell();
+            nameCell.textContent = loan.borrowerName;
+            if (loan.flagged) {
+                nameCell.textContent += ' - FLAGGED';
+                nameCell.className = 'flag'; // Turns text red
+            }
+
+            row.insertCell().textContent = loan.borrowerID;
+            row.insertCell().textContent = loan.dueDate;
+            row.insertCell().textContent = loan.state;
+
+            
+            let actionCell = row.insertCell();
+            if (loan.status === 'Active') {
+                let btn = document.createElement('button');
+                btn.textContent = 'Mark Returned';
+                btn.style.width = 'auto';
+                btn.onclick = function() {
+                    markReturned(loan.transactionID);
+                };
+                actionCell.append(btn);
+            }
+        }
+    }
+
+    
+
+    // Checkout button (SR-5.1, 5.2)
+    getElement('checkoutBtn').onclick = async function() {
+        const data = {
+            assetID: getElement('assetID').value,
+            borrowerName: getElement('borrowerName').value,
+            borrowerID: getElement('borrowerID').value,
+            borrowerEmail: getElement('borrowerEmail').value,
+            dueDate: getElement('dueDate').value
+        };
+
+        const response = await fetch('/api/loans/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+
+        if (result.ok) {
+            getElement('message').className = 'success';
+            getElement('message').textContent = 'Success! Checked out the equipment';
+          
+            getElement('borrowerName').value = '';
+            getElement('borrowerID').value = '';
+            getElement('borrowerEmail').value = '';
+            getElement('dueDate').value = '';
+            refreshPage();
+        } else {
+            getElement('message').className = 'error';
+            getElement('message').textContent = result.errors.join(' ');
+        }
+
+        
+    };
+
+    // Search button (SR-5.5)
+    getElement('searchBtn').onclick = function() {
+        currentSearchText = getElement('searchBox').value;
+        loadLoans();
+    };
+
+    getElement('showAllBtn').onclick = function() {
+        currentSearchText = '';
+        getElement('searchBox').value = '';
+        loadLoans();
+    };
+
+  
+    async function markReturned(transactionID) {
+        await fetch('/api/loans/return/' + transactionID, { method: 'POST' });
+        refreshPage();
+    }
+
+    
+    function refreshPage() {
+        loadSummary();
+        loadLoans();
+    }
+
+    
+    refreshPage();
+</script>
+
+
+</body>
+
+
 </html>

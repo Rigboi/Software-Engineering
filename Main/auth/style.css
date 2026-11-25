@@ -1,0 +1,17 @@
+:root { font-family: 'Segoe UI', Arial, sans-serif; color: #243346; background: #edf1f5; font-size: 16px; color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 18px; min-height: 100vh; display: grid; place-items: center; }
+.auth-card { width: 100%; max-width: 460px; background: white; border: 1px solid #d5dfe8; border-radius: 10px; padding: 32px; box-shadow: 0 8px 28px #18334d0d; }
+.brand { color: #003366; font-weight: 750; letter-spacing: .1em; font-size: .9rem; }
+h1 { color: #003366; font-size: 1.9rem; margin: 16px 0 10px; }
+p { line-height: 1.55; }
+label { display: block; margin: 18px 0 7px; font-size: .9rem; font-weight: 600; }
+input { width: 100%; font: inherit; padding: 12px; border: 1px solid #aebdcb; border-radius: 5px; }
+button { width: 100%; margin: 24px 0 8px; border: 0; background: #0056b3; color: white; padding: 13px; border-radius: 5px; font: inherit; font-weight: 600; cursor: pointer; }
+button:hover { background: #004494; } button:disabled { opacity: .6; cursor: wait; }
+a { color: #0056b3; } :focus-visible { outline: 3px solid #4b96dc; outline-offset: 3px; }
+.hint { color: #526579; font-size: .875rem; margin: 8px 0; } .footnote { margin-top: 24px; }
+#message { background: #fff0f0; border: 1px solid #d9a4a4; padding: 12px; border-radius: 5px; color: #842525; }
+#invite-code { font-family: monospace; font-size: 1rem; }
+[hidden] { display: none !important; }
+@media (max-width: 480px) { body { padding: 18px 12px; } .auth-card { padding: 24px; } }

@@ -1,194 +1,74 @@
-// Feature 03: Asset Loaning & Tracking
-const express = require('express');
-const cron = require('node-cron');
-const path = require('path');
+'use strict';
+const { isValidDate, toISODate } = require('../Maintennance-schedule/src/maintenanceRules');
 
-// Add this to the server
-module.exports = function (app, db, options = {}) {
-    const router = express.Router();
-    router.use(express.json());
-
-    // Variables
-    const MITS_EMAIL = 'mits@uwi.edu'; 
-    const OVERDUE_DAY = 1;  
-    const MISSING_DAY = 31; 
-
-    // DATABASE SETUP 
-    async function setupDatabase() {
-        // Loans table
-        await new Promise((resolve, reject) => {
-            db.run(`CREATE TABLE IF NOT EXISTS LoanTransactions (
-                transactionID INTEGER PRIMARY KEY AUTOINCREMENT,
-                assetID TEXT NOT NULL,
-                borrowerName TEXT NOT NULL,
-                borrowerID TEXT NOT NULL,
-                borrowerEmail TEXT NOT NULL,
-                checkOutDate TEXT NOT NULL,
-                dueDate TEXT NOT NULL,
-                checkinDate TEXT,
-                status TEXT DEFAULT 'Active',
-                overdueEmailSent INTEGER DEFAULT 0
-            )`, (err) => err ? reject(err) : resolve());
-        });
-
-        
-        if (options.sampleAssets) {
-            await new Promise((resolve) => {
-                db.run(`CREATE TABLE IF NOT EXISTS Assets (assetID TEXT PRIMARY KEY, assetName TEXT, status TEXT DEFAULT 'Available')`, resolve);
-            });
-            await new Promise((resolve) => {
-                db.run(`INSERT OR IGNORE INTO Assets (assetID, assetName) VALUES 
-                    ('WJC-001', 'Dell Laptop'), ('WJC-002', 'Projector'), ('WJC-003', 'Wired Mouse')`, resolve);
-            });
-        }
+module.exports = function registerLoans(app, db, options = {}) {
+  const express = options.express || require('express');
+  const router = express.Router();
+  router.use(express.json({ limit: '16kb' }));
+  if (options.authorize) router.use(options.authorize);
+  const sql = db.native;
+  const today = () => toISODate(options.clock ? options.clock() : new Date());
+  const daysLate = loan => Math.floor((Date.parse(today()) - Date.parse(loan.dueDate)) / 86400000);
+  function transaction(action) {
+    sql.exec('BEGIN IMMEDIATE');
+    try { const result = action(); sql.exec('COMMIT'); return result; }
+    catch (error) { sql.exec('ROLLBACK'); throw error; }
+  }
+  function endpoint(action) {
+    return async (req, res, next) => {
+      try { await db.exclusive(() => action(req, res)); } catch (error) { next(error); }
+    };
+  }
+  router.post('/checkout', endpoint((req, res) => {
+    const data = req.body || {};
+    for (const key of ['assetID', 'borrowerName', 'borrowerID', 'borrowerEmail', 'dueDate']) {
+      if (typeof data[key] !== 'string' || !data[key].trim()) return res.status(400).json({ ok: false, errors: ['All fields are required.'] });
     }
-
-    
-    const dbReady = setupDatabase();
-
-    // 1. CHECK-OUT (SR-5.1, SR-5.2) 
-    async function checkOut(data) {
-        // SR-5.1: Validate that all fields are filled out
-        if (!data.assetID || !data.borrowerName || !data.borrowerID || !data.borrowerEmail || !data.dueDate) {
-            return { ok: false, errors: ['All fields are required.'] };
-        }
-        // TS-5.1B: Ensure the return date is in the future
-        const today = new Date().toISOString().split('T')[0];
-
-        if (data.dueDate <= today) {
-            return { ok: false, errors: ['Return date must be in the future.'] };
-            }
-        
-        // SR-5.2: Check if the asset is Available
-        const asset = await new Promise((resolve) => {
-            db.get(`SELECT status FROM Assets WHERE assetID = ?`, [data.assetID], (err, row) => resolve(row));
-        });
-
-        if (!asset) return { ok: false, errors: ['Asset not found.'] };
-        if (asset.status !== 'Available') return { ok: false, errors: ['Asset is already on loan or missing.'] };
-
-        // SR-5.2: Save the transaction and update the asset status
-        await new Promise((resolve) => {
-            db.serialize(() => {
-                db.run(`UPDATE Assets SET status = 'On Loan' WHERE assetID = ?`, [data.assetID]);
-                db.run(`INSERT INTO LoanTransactions (assetID, borrowerName, borrowerID, borrowerEmail, checkOutDate, dueDate) 
-                        VALUES (?, ?, ?, ?, date('now'), ?)`, 
-                    [data.assetID, data.borrowerName, data.borrowerID, data.borrowerEmail, data.dueDate], resolve);
-            });
-        });
-
-        return { ok: true, message: 'Checked out successfully.' };
-    }
-
-    // 2. DAILY OVERDUE CHECK (SR-5.3, 5.4, 5.6, 5.7) 
-    async function runDailyCheck() {
-       
-        const loans = await new Promise((resolve) => {
-            db.all(`SELECT * FROM LoanTransactions WHERE status != 'Returned'`, (err, rows) => resolve(rows || []));
-        });
-
-        for (let loan of loans) {
-            // Calculate how many days late it is
-            const today = new Date().toISOString().split('T')[0];
-            const daysLate = Math.floor((new Date(today) - new Date(loan.dueDate)) / (1000 * 60 * 60 * 24));
-
-            if (daysLate >= OVERDUE_DAY) {
-                // SR-5.3 & 5.6: Send overdue email and flag borrower (only if not sent yet)
-                if (!loan.overdueEmailSent) {
-                    console.log(`[EMAIL] Overdue Alert for ${loan.borrowerName} (Asset: ${loan.assetID})`);
-                    await new Promise((resolve) => {
-                        db.run(`UPDATE LoanTransactions SET overdueEmailSent = 1, status = 'Overdue' WHERE transactionID = ?`, [loan.transactionID], resolve);
-                    });
-                }
-
-                // SR-5.4: Mark as Missing after 31 days
-                if (daysLate >= MISSING_DAY && loan.status !== 'Missing') {
-                    await new Promise((resolve) => {
-                        db.run(`UPDATE LoanTransactions SET status = 'Missing' WHERE transactionID = ?`, [loan.transactionID]);
-                        db.run(`UPDATE Assets SET status = 'Missing' WHERE assetID = ?`, [loan.assetID], resolve);
-                    });
-                }
-            }
-        }
-    }
-
-    // SR-5.7: Run the check automatically every night at midnight
-    cron.schedule('0 0 * * *', runDailyCheck);
-    
-
-    // 3. API ROUTES 
-
-    // Checkout route
-    router.post('/checkout', async (req, res) => {
-        await dbReady; // Wait for DB setup
-        const result = await checkOut(req.body);
-        res.status(result.ok ? 200 : 400).json(result);
+    if (!isValidDate(data.dueDate) || data.dueDate <= today()) return res.status(400).json({ ok: false, errors: ['Return date must be a valid future date.'] });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.borrowerEmail)) return res.status(400).json({ ok: false, errors: ['Enter a valid borrower email.'] });
+    const result = transaction(() => {
+      const asset = sql.prepare('SELECT status FROM Assets WHERE assetID = ?').get(data.assetID.trim());
+      if (!asset) return { ok: false, errors: ['Asset not found.'] };
+      if (asset.status !== 'Available') return { ok: false, errors: ['Asset is not available for checkout.'] };
+      sql.prepare("UPDATE Assets SET status = 'On Loan' WHERE assetID = ?").run(data.assetID.trim());
+      const row = sql.prepare(`INSERT INTO LoanTransactions
+        (assetID, borrowerName, borrowerID, borrowerEmail, checkOutDate, dueDate)
+        VALUES (?, ?, ?, ?, ?, ?)`).run(data.assetID.trim(), data.borrowerName.trim(), data.borrowerID.trim(), data.borrowerEmail.trim(), today(), data.dueDate);
+      return { ok: true, transactionID: Number(row.lastInsertRowid), message: 'Checked out successfully.' };
     });
+    res.status(result.ok ? 200 : 400).json(result);
+  }));
+  router.get('/history', endpoint((req, res) => {
+    const rows = sql.prepare(`SELECT t.*, a.assetName FROM LoanTransactions t
+      LEFT JOIN Assets a ON t.assetID = a.assetID WHERE t.borrowerName LIKE ? ORDER BY t.transactionID DESC`).all(`%${String(req.query.search || '')}%`);
+    res.json(rows.map(loan => ({ ...loan,
+      flagged: loan.status !== 'Returned' && daysLate(loan) >= 1,
+      state: loan.status === 'Returned' ? 'Returned' : loan.status === 'Missing' ? 'Missing' : daysLate(loan) >= 1 ? 'Overdue' : loan.status
+    })));
+  }));
+  router.get('/summary', endpoint((req, res) => {
+    const counts = { Available: 0, 'On Loan': 0, Missing: 0, 'Sent for Repair': 0 };
+    sql.prepare('SELECT status, COUNT(*) AS count FROM Assets GROUP BY status').all().forEach(row => { counts[row.status] = row.count; });
+    const flagged = sql.prepare("SELECT * FROM LoanTransactions WHERE status != 'Returned'").all()
+      .filter(loan => daysLate(loan) >= 1).map(loan => ({ borrowerID: loan.borrowerID, borrowerName: loan.borrowerName }));
+    res.json({ today: today(), counts, flagged });
+  }));
+  router.get('/assets', endpoint((req, res) => res.json(sql.prepare('SELECT assetID, assetName, status FROM Assets ORDER BY assetName, assetID').all())));
+  router.post('/return/:id', (req, res) => res.status(410).json({ error: 'Use the Asset Returns page to record an inspection and return.' }));
+  app.use('/api/loans', router);
+  app.get('/loaning', (req, res) => res.redirect('/pages/Asset-Borrowing/loaning.html'));
 
-    // Search History (SR-5.5)
-    router.get('/history', async (req, res) => {
-        await dbReady;
-        const search = req.query.search || '';
-        db.all(`SELECT t.*, a.assetName FROM LoanTransactions t LEFT JOIN Assets a ON t.assetID = a.assetID WHERE t.borrowerName LIKE ? ORDER BY t.transactionID DESC`, ['%' + search + '%'], (err, rows) => {
-           
-            const results = (rows || []).map(loan => {
-                const daysLate = Math.floor((new Date(new Date().toISOString().split('T')[0]) - new Date(l.dueDate)) / (1000 * 60 * 60 * 24));
-                return {
-                    ...loan,
-                    flagged: (loan.status !== 'Returned' && daysLate >= 1),
-                    state: loan.status === 'Missing' ? 'Missing' : (daysLate >= 1 && loan.status !== 'Returned' ? 'Overdue' : loan.status)
-                };
-            });
-            res.json(results);
-        });
-    });
-
-    // Get Summary Counts
-    router.get('/summary', async (req, res) => {
-        await dbReady;
-        db.all(`SELECT status, COUNT(*) as count FROM Assets GROUP BY status`, (err, rows) => {
-            const counts = { 'Available': 0, 'On Loan': 0, 'Missing': 0 };
-            (rows || []).forEach(row => counts[row.status] = row.count);
-
-            db.all(`SELECT borrowerID, borrowerName, dueDate, status FROM LoanTransactions WHERE status != 'Returned'`, (err, loans) => {
-                const flagged = (loans || []).filter(l => {
-                    const daysLate = Math.floor((new Date(new Date().toISOString().split('T')[0]) - new Date(l.dueDate)) / (1000 * 60 * 60 * 24));
-                    return daysLate >= 1;
-                }).map(l => ({ borrowerID: l.borrowerID, borrowerName: l.borrowerName }));
-
-                res.json({ today: new Date().toISOString().split('T')[0], counts, flagged });
-            });
-        });
-    });
-
-    // Get Assets for Dropdown
-    router.get('/assets', async (req, res) => {
-        await dbReady;
-        db.all(`SELECT assetID, assetName, status FROM Assets ORDER BY assetName ASC, assetID ASC`, (err, rows) => {
-            res.json(rows || []);
-        });
-    });
-
-    // Temporary Route for "Mark Returned" button (For testing)
-    router.post('/return/:id', async (req, res) => {
-        await dbReady;
-        db.get(`SELECT assetID FROM LoanTransactions WHERE transactionID = ?`, [req.params.id], (err, row) => {
-            if (row) {
-                db.serialize(() => {
-                    db.run(`UPDATE LoanTransactions SET status = 'Returned', checkinDate = date('now') WHERE transactionID = ?`, [req.params.id]);
-                    db.run(`UPDATE Assets SET status = 'Available' WHERE assetID = ?`, [row.assetID], () => res.json({ ok: true }));
-                });
-            }
-        });
-    });
-
-    // Connect the routes to /api/loans
-    app.use('/api/loans', router);
-
-    // Serve the HTML page
-    app.get('/loaning', (req, res) => {
-        res.sendFile(path.join(__dirname, 'loaning.html'));
-    });
-
-    return { runDailyCheck }; // Return for testing purposes
+  async function runDailyCheck() {
+    return db.exclusive(() => transaction(() => {
+      const loans = sql.prepare("SELECT * FROM LoanTransactions WHERE status != 'Returned'").all();
+      for (const loan of loans) {
+        const days = daysLate(loan);
+        if (days >= 1) sql.prepare('UPDATE LoanTransactions SET status = ? WHERE transactionID = ?')
+          .run(days >= 31 ? 'Missing' : 'Overdue', loan.transactionID);
+        if (days >= 31) sql.prepare("UPDATE Assets SET status = 'Missing' WHERE assetID = ?").run(loan.assetID);
+      }
+      // Delivery is not connected: never mark overdueEmailSent as true.
+    }));
+  }
+  return { runDailyCheck };
 };

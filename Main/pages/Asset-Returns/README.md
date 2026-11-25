@@ -1,3 +1,7 @@
+# Integrated server
+
+Run `npm install` and `npm start` from the repository root. Open http://localhost:3000/returns. The server now mounts this module and Loans against one database and queue. Authentication is provided by the application session. The email outbox worker remains to be connected. The older standalone integration example below is retained as an interface reference.
+
 # Asset Returns
 
 Open `index.html?demo=1` through a static server to try fictional loans. Demo data is stored under `wjcAssetReturnsDemo.v1` in browser localStorage, separately from Asset Management. It does not change real inventory or send email. Returning a sample loan removes it from outstanding loans and adds a permanent browser-local inspection record.
@@ -6,7 +10,7 @@ The normal page uses `/api/returns` and does not substitute fictional records if
 
 ## Connect to the application server
 
-This repository does not currently include an application entry point, authentication middleware, or installed backend dependencies. `returnFeature.js` is an Express registration module compatible with the `Assets` and `LoanTransactions` tables in `../Asset-Borrowing/loanFeature.js`.
+The integrated server now provides the application entry point and authentication middleware. `returnFeature.js` is an Express registration module compatible with the `Assets` and `LoanTransactions` tables in `../Asset-Borrowing/loanFeature.js`.
 
 In the eventual Express server, after connecting SQLite and setting up sessions:
 
