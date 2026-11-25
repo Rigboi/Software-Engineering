@@ -2,31 +2,80 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{title}}</title>
+    <title>Warranty Report</title>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="Table">
+    <h1>Warranty Report</h1>
+
+    <!-- SR-1: MITS staff set the warning days -->
+    <section id="settings">
+      <h2>Warning Days</h2>
+      <label for="warningDays">Days before expiry to warn (separate with commas):</label>
+      <input type="text" id="warningDays" />
+      <button id="saveDaysBtn">Save</button>
+      <p id="settingsMessage"></p>
+    </section>
+
+    <!-- SR-3: alerts for devices that reached a warning day -->
+    <section id="alerts">
+      <h2>Warranty Alerts</h2>
+      <ul id="alertList"></ul>
+      <button id="sendEmailBtn">Email MITS now</button>
+      <p id="emailStatus"></p>      
+    </section>
+
+    <!-- SR-5 and SR-6: every device with its warranty status tag -->
+    <section id="devices">
+      <h2>All Devices</h2>
       <table>
         <thead>
           <tr>
-            <th>Header 1</th>
-            <th>Header 2</th>
-            <th>Header 3</th>
+            <th>Tag ID</th>
+            <th>Device Type</th>
+            <th>Serial Number</th>
+            <th>Condition</th>
+            <th>Warranty End Date</th>
+            <th>Days Remaining</th>
+            <th>Status</th>
           </tr>
         </thead>
-        <tbody>
-          {{rows}}
-        </tbody>
+        <tbody id="deviceTable"></tbody>
       </table>
-    </div>
-    <div id="Btn1">
-      <button>Button 1</button>
+    </section>
 
-      <button>Button 2</button>
+    <!-- PDF report (from the SRS performance requirements) -->
+    <section id="report">
+      <h2>PDF Report</h2>
 
-      <button>Button 3</button>
-    </div>
+      <label for="filterCondition">Condition:</label>
+      <select id="filterCondition">
+        <option value="">All</option>
+        <option value="New">New</option>
+        <option value="Good">Good</option>
+        <option value="Fair">Fair</option>
+        <option value="Poor">Poor</option>
+      </select>
+
+      <label for="filterType">Device type:</label>
+      <select id="filterType">
+        <option value="">All</option>
+      </select>
+
+      <label for="filterFrom">Warranty ends from:</label>
+      <input type="date" id="filterFrom" />
+
+      <label for="filterTo">to:</label>
+      <input type="date" id="filterTo" />
+
+      <button id="downloadPdfBtn">Download PDF Report</button>
+      <p id="reportMessage"></p>
+    </section>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>
+
