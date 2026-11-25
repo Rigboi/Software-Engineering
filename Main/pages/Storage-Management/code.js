@@ -1,331 +1,59 @@
-
-// -----------------------------------------
-// DEMO DATA
-// -----------------------------------------
-
-// Sample assets for testing.
-// These will eventually come from the shared database.
-
-const assets = [
-    {
-        id: "WJC-001",
-        description: "Dell Latitude Laptop",
-        location: "IT Storage Room"
-    },
-    {
-        id: "WJC-002",
-        description: "HP LaserJet Printer",
-        location: "Main Office"
-    },
-    {
-        id: "WJC-003",
-        description: "Cisco Network Switch",
-        location: "Server Room"
-    },
-    {
-        id: "WJC-004",
-        description: "Samsung Monitor",
-        location: "IT Storage Room"
-    }
-];
-
-// Registered storage locations.
-const locations = [
-    "IT Storage Room",
-    "Main Office",
-    "Server Room",
-    "Computer Lab",
-    "Equipment Cabinet"
-];
-
-// Stores successful relocation records.
-const relocationHistory = [];
-
-
-// -----------------------------------------
-// HTML ELEMENTS
-// -----------------------------------------
-
-const assetSelect = document.getElementById("asset-select");
-const currentLocation = document.getElementById("current-location");
-const destinationSelect = document.getElementById("destination");
-const staffInput = document.getElementById("staff-member");
-const relocationForm = document.getElementById("relocation-form");
-const relocationMessage = document.getElementById("relocation-message");
-
-const locationSearch = document.getElementById("location-search");
-const searchButton = document.getElementById("search-button");
-const assetResults = document.getElementById("asset-results");
-
-const historyAsset = document.getElementById("history-asset");
-const historyResults = document.getElementById("history-results");
-
-
-// -----------------------------------------
-// HELPER FUNCTION: ADD DROPDOWN OPTIONS
-// -----------------------------------------
-
-function addOption(selectElement, value, text) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = text;
-    selectElement.appendChild(option);
+'use strict';
+let assets = [], locations = [], relocationHistory = [];
+const $ = id => document.getElementById(id);
+function showMessage(message, success) { $('relocation-message').textContent = message; $('relocation-message').style.color = success ? 'green' : '#a12622'; }
+function cell(row, value) { const td = document.createElement('td'); td.textContent = value; row.append(td); }
+function empty(body, text, count) { const row = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = count; td.textContent = text; row.append(td); body.append(row); }
+function options(id, values) {
+  const select = $(id), previous = select.value;
+  select.replaceChildren(); const initial = document.createElement('option'); initial.value = ''; initial.textContent = 'Select an option'; select.append(initial);
+  for (const [value, text] of values) { const option = document.createElement('option'); option.value = value; option.textContent = text; select.append(option); }
+  if ([...select.options].some(option => option.value === previous)) select.value = previous;
 }
-
-
-// -----------------------------------------
-// LOAD ASSETS AND LOCATIONS
-// -----------------------------------------
-
-function loadDropdowns() {
-    assets.forEach(asset => {
-        addOption(
-            assetSelect,
-            asset.id,
-            `${asset.id} - ${asset.description}`
-        );
-
-        addOption(
-            historyAsset,
-            asset.id,
-            `${asset.id} - ${asset.description}`
-        );
-    });
-
-    locations.forEach(location => {
-        addOption(destinationSelect, location, location);
-        addOption(locationSearch, location, location);
-    });
+async function request(url, body) {
+  const response = await fetch(url, { cache: 'no-store', ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+  const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to load storage records.'); return data;
 }
-
-
-// -----------------------------------------
-// DISPLAY CURRENT LOCATION
-// -----------------------------------------
-
-assetSelect.addEventListener("change", function () {
-    const selectedAsset = assets.find(
-        asset => asset.id === assetSelect.value
-    );
-
-    currentLocation.value = selectedAsset
-        ? selectedAsset.location
-        : "";
-
-    relocationMessage.textContent = "";
-});
-
-
-// -----------------------------------------
-// RELOCATE AN ASSET
-// -----------------------------------------
-
-relocationForm.addEventListener("submit", function (event) {
-    event.preventDefault();
-
-    const selectedAsset = assets.find(
-        asset => asset.id === assetSelect.value
-    );
-
-    const newLocation = destinationSelect.value;
-    const staffMember = staffInput.value.trim();
-
-    // Check that an existing asset was selected.
-    if (!selectedAsset) {
-        showMessage("Please select a valid asset.", false);
-        return;
-    }
-
-    // Check that the destination is registered.
-    if (!locations.includes(newLocation)) {
-        showMessage("Please select a valid storage location.", false);
-        return;
-    }
-
-    // Check that a staff member was entered.
-    if (!staffMember) {
-        showMessage("Please enter the responsible staff member.", false);
-        return;
-    }
-
-    // Prevent moving an asset to its existing location.
-    if (selectedAsset.location === newLocation) {
-        showMessage(
-            "The asset is already stored at this location.",
-            false
-        );
-        return;
-    }
-
-    // Record the previous location before updating it.
-    const previousLocation = selectedAsset.location;
-
-    // Create the relocation record.
-    const relocationRecord = {
-        assetId: selectedAsset.id,
-        previousLocation: previousLocation,
-        newLocation: newLocation,
-        relocationDate: new Date().toLocaleDateString(),
-        staffMember: staffMember
-    };
-
-    // Update the asset's current location.
-    selectedAsset.location = newLocation;
-
-    // Save the successful relocation in the history.
-    relocationHistory.push(relocationRecord);
-
-    // Update the page.
-    currentLocation.value = newLocation;
-
-    showMessage("Asset relocated successfully!", true);
-
-    // Refresh displayed information.
-    searchAssets();
-    displayHistory();
-
-    // Clear the form fields.
-    destinationSelect.value = "";
-    staffInput.value = "";
-});
-
-
-// -----------------------------------------
-// DISPLAY SUCCESS OR ERROR MESSAGE
-// -----------------------------------------
-
-function showMessage(message, success) {
-    relocationMessage.textContent = message;
-    relocationMessage.style.color = success ? "green" : "red";
-}
-
-
-// -----------------------------------------
-// SEARCH ASSETS BY LOCATION
-// -----------------------------------------
-
+function currentLocation() { const asset = assets.find(asset => asset.assetID === $('asset-select').value); $('current-location').value = asset ? asset.location : ''; }
 function searchAssets() {
-    const selectedLocation = locationSearch.value;
-
-    assetResults.replaceChildren();
-
-    if (!selectedLocation) {
-        addTableMessage(
-            assetResults,
-            "Select a location to view its assets.",
-            3
-        );
-        return;
-    }
-
-    const matchingAssets = assets.filter(
-        asset => asset.location === selectedLocation
-    );
-
-    if (matchingAssets.length === 0) {
-        addTableMessage(
-            assetResults,
-            "No assets are currently recorded at this location.",
-            3
-        );
-        return;
-    }
-
-    matchingAssets.forEach(asset => {
-        const row = document.createElement("tr");
-
-        addTableCell(row, asset.id);
-        addTableCell(row, asset.description);
-        addTableCell(row, asset.location);
-
-        assetResults.appendChild(row);
-    });
+  const body = $('asset-results'); body.replaceChildren();
+  const location = $('location-search').value;
+  if (!location) { empty(body, 'Select a location to view its assets.', 3); return; }
+  const matches = assets.filter(asset => asset.location === location);
+  if (!matches.length) empty(body, 'No assets are currently recorded at this location.', 3);
+  for (const asset of matches) { const row = document.createElement('tr'); for (const value of [asset.assetID, asset.assetName, asset.location]) cell(row, value); body.append(row); }
 }
-
-
-// -----------------------------------------
-// VIEW RELOCATION HISTORY
-// -----------------------------------------
-
 function displayHistory() {
-    const selectedAssetId = historyAsset.value;
-
-    historyResults.replaceChildren();
-
-    if (!selectedAssetId) {
-        addTableMessage(
-            historyResults,
-            "Select an asset to view its relocation history.",
-            4
-        );
-        return;
-    }
-
-    const selectedAsset = assets.find(
-        asset => asset.id === selectedAssetId
-    );
-
-    const assetHistory = relocationHistory.filter(
-        record => record.assetId === selectedAssetId
-    );
-
-    if (assetHistory.length === 0) {
-        addTableMessage(
-            historyResults,
-            `No previous relocations recorded. Current location: ${selectedAsset.location}`,
-            4
-        );
-        return;
-    }
-
-    assetHistory.forEach(record => {
-        const row = document.createElement("tr");
-
-        addTableCell(row, record.previousLocation);
-        addTableCell(row, record.newLocation);
-        addTableCell(row, record.relocationDate);
-        addTableCell(row, record.staffMember);
-
-        historyResults.appendChild(row);
-    });
+  const body = $('history-results'); body.replaceChildren(); const id = $('history-asset').value;
+  if (!id) { empty(body, 'Select an asset to view its relocation history.', 4); return; }
+  const records = relocationHistory.filter(record => record.assetID === id);
+  if (!records.length) { const asset = assets.find(asset => asset.assetID === id); empty(body, 'No previous relocations recorded. Current location: ' + (asset?.location || 'Not recorded'), 4); }
+  for (const record of records) { const row = document.createElement('tr'); for (const value of [record.previousLocation, record.newLocation, new Date(record.relocationDate).toLocaleString(), record.staffMember]) cell(row, value); body.append(row); }
 }
-
-
-// -----------------------------------------
-// TABLE HELPER FUNCTIONS
-// -----------------------------------------
-
-function addTableCell(row, value) {
-    const cell = document.createElement("td");
-    cell.textContent = value;
-    row.appendChild(cell);
+async function refreshStorage() {
+  try {
+    const [data, account] = await Promise.all([request('/api/storage'), request('/api/auth/me')]);
+    assets = data.assets; locations = data.locations; relocationHistory = data.history;
+    $('staff-member').value = account.user.name;
+    const assetOptions = assets.map(asset => [asset.assetID, `${asset.assetID} - ${asset.assetName}`]);
+    options('asset-select', assetOptions); options('history-asset', assetOptions);
+    options('destination', locations.map(location => [location, location])); options('location-search', locations.map(location => [location, location]));
+    currentLocation(); searchAssets(); displayHistory();
+  } catch (error) { showMessage(error.message, false); }
 }
-
-function addTableMessage(tableBody, message, columnCount) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-
-    cell.colSpan = columnCount;
-    cell.textContent = message;
-
-    row.appendChild(cell);
-    tableBody.appendChild(row);
-}
-
-
-// -----------------------------------------
-// EVENT LISTENERS
-// -----------------------------------------
-
-searchButton.addEventListener("click", searchAssets);
-
-locationSearch.addEventListener("change", searchAssets);
-
-historyAsset.addEventListener("change", displayHistory);
-
-
-// -----------------------------------------
-// INITIALIZE THE PAGE
-// -----------------------------------------
-
-loadDropdowns();
+$('asset-select').addEventListener('change', currentLocation);
+$('search-button').addEventListener('click', searchAssets);
+$('location-search').addEventListener('change', searchAssets);
+$('history-asset').addEventListener('change', displayHistory);
+$('relocation-form').addEventListener('submit', async event => {
+  event.preventDefault(); const asset = assets.find(asset => asset.assetID === $('asset-select').value);
+  if (!asset) { showMessage('Select a valid asset.', false); return; }
+  const button = event.submitter; if (button) button.disabled = true;
+  try {
+    await request('/api/storage/relocations', { assetID: asset.assetID, newLocation: $('destination').value, version: asset.version });
+    await refreshStorage(); $('destination').value = ''; showMessage('Asset location updated in the shared database.', true);
+  } catch (error) { showMessage(error.message, false); }
+  finally { if (button) button.disabled = false; }
+});
+window.addEventListener('focus', refreshStorage);
+refreshStorage();

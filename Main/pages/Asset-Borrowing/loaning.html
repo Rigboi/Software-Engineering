@@ -146,7 +146,7 @@
     let currentSearchText = '';
 
     async function loadLoans() {
-        const response = await fetch('/api/loans/history?search=' + currentSearchText);
+        const response = await fetch('/api/loans/history?search=' + encodeURIComponent(currentSearchText));
         const loans = await response.json();
         
         const table = getElement('loansTable');
@@ -187,9 +187,9 @@
 
             
             let actionCell = row.insertCell();
-            if (loan.status === 'Active') {
+            if (loan.status !== 'Returned') {
                 let btn = document.createElement('button');
-                btn.textContent = 'Mark Returned';
+                btn.textContent = 'Record return';
                 btn.style.width = 'auto';
                 btn.onclick = function() {
                     markReturned(loan.transactionID);
@@ -250,8 +250,7 @@
 
   
     async function markReturned(transactionID) {
-        await fetch('/api/loans/return/' + transactionID, { method: 'POST' });
-        refreshPage();
+        window.location.href = '/returns';
     }
 
     

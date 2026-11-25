@@ -18,6 +18,7 @@ module.exports = function registerReturns(app, db, options = {}) {
     await run(`CREATE TABLE IF NOT EXISTS Assets (assetID TEXT PRIMARY KEY, assetName TEXT, status TEXT DEFAULT 'Available')`);
     const columns = await all('PRAGMA table_info(Assets)');
     if (!columns.some(column => column.name === 'condition')) await run('ALTER TABLE Assets ADD COLUMN condition TEXT');
+    if (!columns.some(column => column.name === 'version')) await run('ALTER TABLE Assets ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
     await run(`CREATE TABLE IF NOT EXISTS LoanTransactions (
       transactionID INTEGER PRIMARY KEY AUTOINCREMENT, assetID TEXT NOT NULL,
       borrowerName TEXT NOT NULL, borrowerID TEXT NOT NULL, borrowerEmail TEXT NOT NULL,
@@ -75,7 +76,7 @@ module.exports = function registerReturns(app, db, options = {}) {
         const updated = await run(`UPDATE LoanTransactions SET status = 'Returned', checkinDate = ?
           WHERE transactionID = ? AND status != 'Returned' AND checkinDate IS NULL`, [now.slice(0, 10), transactionID]);
         if (updated.changes !== 1) throw invalid('This loan is no longer outstanding.', 409);
-        await run('UPDATE Assets SET status = ?, condition = ? WHERE assetID = ?', [input.assetStatus, input.condition, loan.assetID]);
+        await run('UPDATE Assets SET status = ?, condition = ?, version = version + 1 WHERE assetID = ?', [input.assetStatus, input.condition, loan.assetID]);
         const record = await run(`INSERT INTO AssetReturns
           (transactionID, assetID, assetName, borrowerName, borrowerID, borrowerEmail, previousCondition,
           condition, assetStatus, notes, staffID, staffName, returnedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

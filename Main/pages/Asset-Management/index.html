@@ -25,7 +25,7 @@
         <h1>Asset Management</h1>
         
         <!-- Error / Success Messages -->
-        <div id="messageBox" class="hidden"></div>
+        <div id="messageBox" role="status" aria-live="polite" class="hidden"></div>
 
         <!-- Form Section (AC-1, AC-2, Scenario 1-4) -->
         <section class="form-section">
@@ -43,6 +43,7 @@
                     <input type="text" id="serialNumber" required placeholder="e.g., SN-998877">
                 </div>
 
+                <div class="input-group"><label for="assetName">Asset Name *</label><input id="assetName" required maxlength="200" placeholder="e.g. Dell Latitude 5420"></div>
                 <div class="input-group">
                     <label for="deviceType">Type *</label>
                     <input type="text" id="deviceType" required placeholder="e.g., Laptop, Monitor">
@@ -82,6 +83,9 @@
         <!-- Inventory Section (AC-3, AC-4, Scenario 5-8) -->
         <section class="inventory-section">
             <h2>Inventory</h2>
+            <button id="refreshAssets" type="button">Refresh inventory</button>
+            <button id="importAssets" type="button" hidden>Import saved browser assets</button>
+            <p id="importNote" hidden>Import your previously saved assets into the shared database. Your browser copy will be kept.</p>
             
             <!-- Search / Filter -->
             <div class="search-bar">
@@ -94,9 +98,9 @@
                     <tr>
                         <th>Tag ID</th>
                         <th>Serial No.</th>
-                        <th>Type</th>
+                        <th>Name / Type</th>
                         <th>Location</th>
-                        <th>Condition</th>
+                        <th>Condition</th><th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>

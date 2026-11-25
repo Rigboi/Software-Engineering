@@ -30,7 +30,7 @@ module.exports = function registerLoans(app, db, options = {}) {
       const asset = sql.prepare('SELECT status FROM Assets WHERE assetID = ?').get(data.assetID.trim());
       if (!asset) return { ok: false, errors: ['Asset not found.'] };
       if (asset.status !== 'Available') return { ok: false, errors: ['Asset is not available for checkout.'] };
-      sql.prepare("UPDATE Assets SET status = 'On Loan' WHERE assetID = ?").run(data.assetID.trim());
+      sql.prepare("UPDATE Assets SET status = 'On Loan', version = version + 1 WHERE assetID = ?").run(data.assetID.trim());
       const row = sql.prepare(`INSERT INTO LoanTransactions
         (assetID, borrowerName, borrowerID, borrowerEmail, checkOutDate, dueDate)
         VALUES (?, ?, ?, ?, ?, ?)`).run(data.assetID.trim(), data.borrowerName.trim(), data.borrowerID.trim(), data.borrowerEmail.trim(), today(), data.dueDate);
@@ -65,7 +65,7 @@ module.exports = function registerLoans(app, db, options = {}) {
         const days = daysLate(loan);
         if (days >= 1) sql.prepare('UPDATE LoanTransactions SET status = ? WHERE transactionID = ?')
           .run(days >= 31 ? 'Missing' : 'Overdue', loan.transactionID);
-        if (days >= 31) sql.prepare("UPDATE Assets SET status = 'Missing' WHERE assetID = ?").run(loan.assetID);
+        if (days >= 31) sql.prepare("UPDATE Assets SET status = 'Missing', version = version + 1 WHERE assetID = ? AND status != 'Missing'").run(loan.assetID);
       }
       // Delivery is not connected: never mark overdueEmailSent as true.
     }));

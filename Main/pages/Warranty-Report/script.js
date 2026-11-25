@@ -1,8 +1,8 @@
-// ===== Shared data (the repository) =====
-// Read the assets that the Asset Management page saved.
-// 'assetData' is the same key Antwon's page uses, so both pages share one data store.
-const assets = JSON.parse(localStorage.getItem('assetData')) || [];
-
+// All reports and alerts read the same server-side inventory as other components.
+(async function loadWarranty() {
+const response = await fetch('/api/assets', { cache: 'no-store' });
+const assets = await response.json();
+if (!response.ok) throw new Error(assets.error || 'Unable to load inventory.');
 // ===== Helper: how many days until a warranty ends =====
 function getDaysRemaining(warrantyDate) {
   if (!warrantyDate) return null; // SR-6: no warranty date recorded
@@ -49,8 +49,8 @@ function renderDeviceTable() {
     addCell(row, asset.deviceType);
     addCell(row, asset.serialNumber);
     addCell(row, asset.condition);
-    addCell(row, asset.warrantyDate || '—');
-    addCell(row, days === null ? '—' : days);
+    addCell(row, asset.warrantyDate || 'â€”');
+    addCell(row, days === null ? 'â€”' : days);
 
     // Status column: a coloured tag
     const statusCell = addCell(row, '');
@@ -278,3 +278,6 @@ if (findDevicesToAlert().length > 0 && localStorage.getItem('lastWarrantyEmail')
 }
 
 document.getElementById('sendEmailBtn').addEventListener('click', sendWarrantyEmail);
+})().catch(error => {
+  document.getElementById('reportMessage').textContent = 'Unable to load shared inventory: ' + error.message;
+});

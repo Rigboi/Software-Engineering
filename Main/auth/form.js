@@ -41,7 +41,7 @@
     if (signup && $('password').value !== $('confirmation').value) { message('The passwords do not match.'); $('confirmation').focus(); return; }
     $('submit').disabled = true;
     try {
-      const body = { email: $('email').value.trim(), password: $('password').value };
+      const body = { loginID: $('loginID').value.trim(), password: $('password').value };
       if (signup) Object.assign(body, { name: $('name').value.trim(), invitationCode: $('invitation').value.trim() });
       await api(signup ? 'signup' : 'login', body);
       location.replace(destination());
