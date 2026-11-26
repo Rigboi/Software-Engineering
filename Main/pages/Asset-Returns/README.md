@@ -1,3 +1,9 @@
+# Acceptance test update
+
+See [TESTING.md](TESTING.md) for the eight requested scenarios. The current component includes history corrections, validated overdue searches, confirmation previews and delivery statuses, and future custom reminder dates. Email transport must be configured explicitly; Ethereal capture and real SMTP acceptance are shown separately. Delivery now occurs after the return transaction commits.
+
+The older implementation notes below are retained for reference; TESTING.md describes the current email and test behavior.
+
 # Integrated server
 
 Run `npm install` and `npm start` from the repository root. Open http://localhost:3000/returns. The server now mounts this module and Loans against one database and queue. Authentication is provided by the application session. The email outbox worker remains to be connected. The older standalone integration example below is retained as an interface reference.

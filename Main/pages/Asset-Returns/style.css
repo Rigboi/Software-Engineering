@@ -62,3 +62,10 @@ footer { display: flex; align-items: center; justify-content: space-between; gap
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 850px) { .workspace { grid-template-columns: 1fr; } .section-heading { align-items: start; flex-wrap: wrap; } }
 @media (max-width: 540px) { main { padding: 20px 14px; } .header-inner { padding: 16px; flex-direction: column; align-items: start; } nav { gap: 14px; font-size: .9rem; } .page-heading { align-items: start; flex-direction: column; } .summary { gap: 8px; } .summary > div { padding: 13px 10px; } .summary span { font-size: .8rem; } .panel { padding: 18px; } h1 { font-size: 1.9rem; } }
+
+.reminder-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+#email-preview { max-width: min(700px, 95vw); border: 1px solid #aebdcb; border-radius: 8px; padding: 24px; }
+#email-preview::backdrop { background: #001e3d66; }
+#email-body { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; }
+#email-list button, #email-list a { margin: 4px; display: inline-block; }
+@media (max-width: 650px) { .reminder-grid { grid-template-columns: 1fr; } }

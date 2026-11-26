@@ -5,7 +5,7 @@ const { DatabaseSync } = require('node:sqlite');
 const registerReturns = require('./returnFeature');
 const model = require('./return-model');
 
-function fixture() {
+function fixture(options = {}) {
   const sqlite = new DatabaseSync(':memory:');
   let failEmail = false;
   const db = {
@@ -20,13 +20,13 @@ function fixture() {
   };
   const middleware = [];
   const router = { use(fn) { middleware.push(fn); }, get() {}, post() {} };
-  const api = registerReturns({ use() {}, get() {} }, db, { router, json: () => (req, res, next) => next() });
+  const api = registerReturns({ use() {}, get() {} }, db, { router, json: () => (req, res, next) => next(), ...options });
   const seed = () => {
     sqlite.exec(`INSERT INTO Assets (assetID, assetName, status, condition) VALUES ('WJC-001', 'Laptop', 'On Loan', 'Good');
       INSERT INTO LoanTransactions (assetID, borrowerName, borrowerID, borrowerEmail, checkOutDate, dueDate)
       VALUES ('WJC-001', 'J. Brown', '101', 'j@example.com', '2026-01-01', '2026-01-10');`);
   };
-  return { sqlite, api, seed, middleware, failNextEmail() { failEmail = true; } };
+  return { sqlite, db, api, seed, middleware, failNextEmail() { failEmail = true; } };
 }
 const input = { condition: 'Fair', assetStatus: 'Sent for Repair', notes: 'Battery needs replacement', received: true };
 const staff = { staffID: 'MITS-01', name: 'IT Staff' };
@@ -89,4 +89,106 @@ test('demo returns are isolated, immutable, validated, and reject duplicate chec
   assert.throws(() => model.recordDemoReturn(initial, 1, input, ' '), /staff name/);
   assert.equal(model.loanState(initial.loans[0], '2026-01-10'), 'On Loan');
   assert.equal(model.loanState(initial.loans[0], '2026-01-11'), 'Overdue');
+});
+
+
+test('TS1.1A and TS1.2A: valid corrections persist while original history is retained', async () => {
+  const f = fixture(); await f.api.ready; f.seed(); await f.api.checkIn(1, input, staff);
+  await f.api.correctHistory(1, { condition: 'Poor', notes: 'Battery damaged', reason: 'Inspection corrected', revision: 0 }, staff);
+  const result = await f.api.listReturns(); assert.equal(result.returns[0].correctedCondition, 'Poor');
+  assert.equal(result.returns[0].correctedNotes, 'Battery damaged');
+  assert.equal(f.sqlite.prepare('SELECT condition FROM AssetReturns').get().condition, 'Fair');
+  assert.equal(f.sqlite.prepare('SELECT staffID FROM ReturnHistoryCorrections').get().staffID, staff.staffID);
+  await assert.rejects(f.api.correctHistory(1, { condition: 'Good', notes: '', reason: 'Stale edit', revision: 0 }, staff), error => error.status === 409);
+  f.sqlite.close();
+});
+test('TS1.1B: invalid history correction leaves all saved history unchanged', async () => {
+  const f = fixture(); await f.api.ready; f.seed(); await f.api.checkIn(1, input, staff);
+  for (const value of [{ condition: 'Invalid', notes: '', reason: 'test', revision: 0 }, { condition: 'Good', notes: '', reason: '', revision: 0 }]) {
+    await assert.rejects(f.api.correctHistory(1, value, staff), error => error.status === 400);
+  }
+  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM ReturnHistoryCorrections').get().n, 0); f.sqlite.close();
+});
+test('TS1.2B: malformed overdue searches are rejected without changing records', async () => {
+  const f = fixture(); await f.api.ready; f.seed();
+  await assert.rejects(f.api.listReturns({ search: '<script>' }), error => error.status === 400);
+  await assert.rejects(f.api.listReturns({ search: 'x'.repeat(101) }), error => error.status === 400);
+  assert.equal((await f.api.listReturns({ search: 'Brown' })).loans.length, 1); f.sqlite.close();
+});
+test('TS1.3A: confirmation contains original and returned conditions and records test capture', async () => {
+  const delivered = []; const f = fixture({ sendEmail: async message => { delivered.push(message); return { captured: true, previewUrl: 'https://ethereal.email/message/test' }; } });
+  await f.api.ready; f.seed(); await f.api.checkIn(1, input, staff);
+  await f.api.processDueEmails(); assert.equal(delivered.length, 1);
+  assert.match(delivered[0].text, /Previous condition: Good/); assert.match(delivered[0].text, /Condition on return: Fair/);
+  assert.equal((await f.api.listEvidence()).emails[0].status, 'Captured');
+  await f.api.processDueEmails(); assert.equal(delivered.length, 1); f.sqlite.close();
+});
+test('TS1.3B: invalid return creates no history or email', async () => {
+  const delivered = []; const f = fixture({ sendEmail: async message => { delivered.push(message); return {}; } });
+  await f.api.ready; f.seed();
+  await assert.rejects(f.api.checkIn(1, { ...input, received: false }, staff), error => error.status === 400);
+  assert.equal((await f.api.listEvidence()).emails.length, 0); assert.equal(delivered.length, 0); f.sqlite.close();
+});
+test('TS1.4A: custom labels generate emails only at their scheduled times and do not repeat', async () => {
+  let now = new Date('2030-01-01T12:00:00.000Z'); const messages = [];
+  const f = fixture({ clock: () => now, sendEmail: async message => { messages.push(message); return { captured: true }; } });
+  await f.api.ready; f.seed();
+  await f.api.scheduleReminders(1, { borrowedAt: '2030-01-01T12:01:00.000Z', overdueAt: '2030-01-01T12:02:00.000Z', missingAt: '2030-01-01T12:03:00.000Z' }, staff);
+  await f.api.processDueEmails(); assert.equal(messages.length, 0);
+  for (const [minute, tag] of [['01', 'Borrowed'], ['02', 'Overdue'], ['03', 'Missing']]) {
+    now = new Date(`2030-01-01T12:${minute}:00.000Z`); await f.api.processDueEmails(); assert.match(messages.at(-1).subject, new RegExp(tag));
+  }
+  assert.equal(messages.length, 3); await f.api.processDueEmails(); assert.equal(messages.length, 3);
+  assert.equal((await f.api.listEvidence()).emails.filter(email => email.administeredAt).length, 3); f.sqlite.close();
+});
+test('TS1.4B: past, impossible, and out-of-order reminder dates save nothing', async () => {
+  const f = fixture({ clock: () => new Date('2030-01-01T12:00:00.000Z') }); await f.api.ready; f.seed();
+  const valid = { borrowedAt: '2030-01-01T12:01:00.000Z', overdueAt: '2030-01-01T12:02:00.000Z', missingAt: '2030-01-01T12:03:00.000Z' };
+  for (const value of [{ ...valid, borrowedAt: '2029-01-01T12:00:00.000Z' }, { ...valid, overdueAt: valid.borrowedAt }, { ...valid, missingAt: '2030-02-31T12:00:00.000Z' }]) {
+    await assert.rejects(f.api.scheduleReminders(1, value, staff), error => error.status === 400);
+  }
+  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM ReturnReminderEvents').get().n, 0); f.sqlite.close();
+});
+test('returning equipment cancels unsent custom reminders and email failure preserves the return', async () => {
+  const f = fixture({ clock: () => new Date('2030-01-01T12:00:00.000Z'), sendEmail: async () => { throw new Error('Test SMTP outage'); } });
+  await f.api.ready; f.seed();
+  await f.api.scheduleReminders(1, { borrowedAt: '2030-01-01T12:01:00.000Z', overdueAt: '2030-01-01T12:02:00.000Z', missingAt: '2030-01-01T12:03:00.000Z' }, staff);
+  await f.api.checkIn(1, input, staff); await f.api.processDueEmails();
+  assert.equal(f.sqlite.prepare('SELECT status FROM LoanTransactions').get().status, 'Returned');
+  assert.equal(f.sqlite.prepare('SELECT status FROM ReturnEmailOutbox').get().status, 'Failed');
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS n FROM ReturnReminderEvents WHERE status='Cancelled'").get().n, 3); f.sqlite.close();
+});
+
+
+async function routeFixture(t) {
+  const express = require('express'); const f = fixture(); await f.api.ready; f.seed();
+  const app = express(); const delivered = [];
+  const api = registerReturns(app, f.db, { router: express.Router(), json: express.json,
+    authorize(req, res, next) { req.user = staff; next(); },
+    sendEmail: async message => { delivered.push(message); return { captured: true }; } });
+  await api.ready; const server = app.listen(0, '127.0.0.1');
+  await new Promise((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); api.stop(); f.sqlite.close(); });
+  const base = `http://127.0.0.1:${server.address().port}/api/returns`;
+  return { ...f, api, delivered,
+    request: (path, body) => fetch(base + path, { ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) }) };
+}
+test('HTTP: invalid inspection is rejected and valid history can be corrected and reloaded', async t => {
+  const f = await routeFixture(t);
+  assert.equal((await f.request('/1', { ...input, condition: 'Invalid' })).status, 400);
+  assert.equal((await f.request('/1', input)).status, 200);
+  assert.equal((await f.request('/history/1/corrections', { condition: 'Poor', notes: 'Rechecked', reason: 'Inspection correction', revision: 0 })).status, 200);
+  const data = await (await f.request('')).json(); assert.equal(data.returns[0].correctedCondition, 'Poor');
+  const emails = await (await f.request('/emails')).json(); assert.match(emails.emails[0].body, /Previous condition: Good/);
+  assert.equal((await f.request('/emails/return/1/send', {})).status, 200);
+  assert.equal(f.delivered.length, 1); assert.equal((await (await f.request('/emails')).json()).emails[0].status, 'Captured');
+});
+test('HTTP: overdue search validates input and future reminder dates are persisted', async t => {
+  const f = await routeFixture(t);
+  assert.equal((await f.request('?search=%3Cscript%3E')).status, 400);
+  assert.equal((await (await f.request('?search=not-found&overdueOnly=true')).json()).loans.length, 0);
+  const date = minutes => new Date(Date.now() + minutes * 60000).toISOString();
+  assert.equal((await f.request('/reminders/1', { borrowedAt: date(-1), overdueAt: date(2), missingAt: date(3) })).status, 400);
+  assert.equal((await f.request('/reminders/1', { borrowedAt: date(1), overdueAt: date(2), missingAt: date(3) })).status, 200);
+  assert.equal((await (await f.request('/emails')).json()).emails.length, 3);
 });
