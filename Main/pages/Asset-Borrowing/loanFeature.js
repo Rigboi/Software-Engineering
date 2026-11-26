@@ -162,20 +162,5 @@ async function runDailyCheck() {
 
 
 
-
-
-
- // async function runDailyCheck() {
-   // return db.exclusive(() => transaction(() => {
-     // const loans = sql.prepare("SELECT * FROM LoanTransactions WHERE status != 'Returned'").all();
-  //    for (const loan of loans) {
-      //  const days = daysLate(loan);
-       // if (days >= 1) sql.prepare('UPDATE LoanTransactions SET status = ? WHERE transactionID = ?')
-       //   .run(days >= 31 ? 'Missing' : 'Overdue', loan.transactionID);
-      //  if (days >= 31) sql.prepare("UPDATE Assets SET status = 'Missing', version = version + 1 WHERE assetID = ? AND status != 'Missing'").run(loan.assetID);
-     // }
-      // Delivery is not connected: never mark overdueEmailSent as true.
-   // }));
- // }
   return { runDailyCheck };
 };
