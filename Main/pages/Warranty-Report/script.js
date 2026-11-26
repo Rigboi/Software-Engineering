@@ -49,8 +49,8 @@ function renderDeviceTable() {
     addCell(row, asset.deviceType);
     addCell(row, asset.serialNumber);
     addCell(row, asset.condition);
-    addCell(row, asset.warrantyDate || 'â€”');
-    addCell(row, days === null ? 'â€”' : days);
+    addCell(row, asset.warrantyDate || '\u2014');
+    addCell(row, days === null ? '\u2014' : days);
 
     // Status column: a coloured tag
     const statusCell = addCell(row, '');
