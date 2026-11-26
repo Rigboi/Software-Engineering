@@ -1,5 +1,6 @@
 'use strict';
 const { validateReturn } = require('./return-model');
+const nodemailer = require('nodemailer');
 
 // Mount with the SAME SQLite database as Asset-Borrowing/loanFeature.js.
 // Pass a dedicated SQLite connection to keep transaction ownership isolated.
@@ -14,6 +15,52 @@ module.exports = function registerReturns(app, db, options = {}) {
     if (options.exclusive) return options.exclusive(action);
     const task = queue.then(action); queue = task.catch(() => {}); return task;
   }
+
+
+
+
+let transporter;
+let demoEmail;
+
+async function sendReturnEmail(to, subject, text) {
+    try {
+        if (!transporter) {
+            const testAccount = await nodemailer.createTestAccount();
+            demoEmail = testAccount.user;
+            transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                secure: false,
+                auth: {
+                    user: testAccount.user,
+                    pass: testAccount.pass
+                }
+            });
+        }
+
+        const info = await transporter.sendMail({
+            from: '"MITS Asset Management" <' + demoEmail + '>',
+            to: to,
+            subject: subject,
+            text: text
+        });
+
+        console.log('[EMAIL] Return Confirmation Sent');
+        console.log('Preview email: ' + nodemailer.getTestMessageUrl(info));
+    } catch (error) {
+        console.log('Email could not be sent: ' + error.message);
+    }
+}
+
+
+
+
+
+
+
+
+
+
   const ready = exclusive(async () => {
     await run(`CREATE TABLE IF NOT EXISTS Assets (assetID TEXT PRIMARY KEY, assetName TEXT, status TEXT DEFAULT 'Available')`);
     const columns = await all('PRAGMA table_info(Assets)');
@@ -85,7 +132,38 @@ module.exports = function registerReturns(app, db, options = {}) {
         await run(`INSERT INTO ReturnEmailOutbox (returnID, recipient, subject, body, createdAt) VALUES (?, ?, ?, ?, ?)`,
           [record.lastID, loan.borrowerEmail, `Asset return confirmed: ${loan.assetID}`,
             `Hello ${loan.borrowerName},\n\nYour return of ${loan.assetID} (${loan.assetName || 'IT equipment'}) was recorded at ${now}.\nPrevious condition: ${previousCondition}\nCondition on return: ${input.condition}\nAsset status: ${input.assetStatus}\n\nWJC MITS`, now]);
-        await run('COMMIT');
+
+
+
+
+
+
+
+
+
+
+             //TRIGGER THE EMAIL 
+        const emailSubject = `Asset return confirmed: ${loan.assetID}`;
+        const emailBody = `Hello ${loan.borrowerName},\n\nYour return of ${loan.assetID} (${loan.assetName || 'IT equipment'}) was recorded at ${now}.\nPrevious condition: ${previousCondition}\nCondition on return: ${input.condition}\nAsset status: ${input.assetStatus}\n\nWJC MITS`;
+        await sendReturnEmail(loan.borrowerEmail, emailSubject, emailBody);
+     
+
+        
+        
+        
+  
+        
+        
+        
+        
+            await run('COMMIT');
+
+
+
+
+
+
+
         return { ok: true, returnID: record.lastID, emailStatus: 'Pending' };
       } catch (error) { await run('ROLLBACK'); throw error; }
     });

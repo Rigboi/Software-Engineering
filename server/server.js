@@ -34,6 +34,12 @@ async function createApplication(options = {}) {
     await returns.ready;
     const assets = await registerAssets(app, store, express, authorize);
     const loans = registerLoans(app, store, { express, authorize, clock: options.clock });
+   
+
+
+
+
+
 
     // Preserve a legacy maintenance database if there is exactly one known file.
     // Multiple candidates require an explicit path so records aren't hidden.

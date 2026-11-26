@@ -1,13 +1,70 @@
 'use strict';
 const { isValidDate, toISODate } = require('../Maintennance-schedule/src/maintenanceRules');
+const nodemailer = require('nodemailer');
+
 
 module.exports = function registerLoans(app, db, options = {}) {
+
   const express = options.express || require('express');
   const router = express.Router();
   router.use(express.json({ limit: '16kb' }));
   if (options.authorize) router.use(options.authorize);
   const sql = db.native;
-  const today = () => toISODate(options.clock ? options.clock() : new Date());
+
+
+  // Demo email account
+let transporter;
+let demoEmail;
+
+async function sendDemoEmail(loan) {
+
+    if (!transporter) {
+        const testAccount = await nodemailer.createTestAccount();
+
+        demoEmail = testAccount.user;
+
+        transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            secure: false,
+            auth: {
+                user: testAccount.user,
+                pass: testAccount.pass
+            }
+        });
+    }
+
+    const info = await transporter.sendMail({
+        from: '"MITS Asset Management" <' + demoEmail + '>',
+        to: loan.borrowerEmail,
+        cc: 'mits-demo@example.com',
+        subject: 'Overdue Asset Return Notification',
+        text:
+            'Dear ' + loan.borrowerName + ',\n\n' +
+            'The equipment you borrowed is overdue.\n\n' +
+            'Asset Tag: ' + loan.assetID + '\n' +
+            'Expected Return Date: ' + loan.dueDate + '\n\n' +
+            'Please return the equipment to the MITS department.\n\n' +
+            'Regards,\nMITS Department'
+    });
+
+    console.log('[EMAIL] Overdue Alert');
+    console.log('Email sent successfully!');
+    console.log('Preview email: ' + nodemailer.getTestMessageUrl(info));
+}
+
+
+
+
+
+ const today = () => toISODate(options.clock ? options.clock() : new Date());
+ //const today = () => '2026-12-31';
+
+
+
+
+
+
   const daysLate = loan => Math.floor((Date.parse(today()) - Date.parse(loan.dueDate)) / 86400000);
   function transaction(action) {
     sql.exec('BEGIN IMMEDIATE');
@@ -58,17 +115,67 @@ module.exports = function registerLoans(app, db, options = {}) {
   app.use('/api/loans', router);
   app.get('/loaning', (req, res) => res.redirect('/pages/Asset-Borrowing/loaning.html'));
 
-  async function runDailyCheck() {
-    return db.exclusive(() => transaction(() => {
-      const loans = sql.prepare("SELECT * FROM LoanTransactions WHERE status != 'Returned'").all();
-      for (const loan of loans) {
-        const days = daysLate(loan);
-        if (days >= 1) sql.prepare('UPDATE LoanTransactions SET status = ? WHERE transactionID = ?')
-          .run(days >= 31 ? 'Missing' : 'Overdue', loan.transactionID);
-        if (days >= 31) sql.prepare("UPDATE Assets SET status = 'Missing', version = version + 1 WHERE assetID = ? AND status != 'Missing'").run(loan.assetID);
-      }
-      // Delivery is not connected: never mark overdueEmailSent as true.
+
+
+async function runDailyCheck() {
+
+    const loans = await db.exclusive(() => transaction(() => {
+
+        return sql.prepare(
+            "SELECT * FROM LoanTransactions WHERE status != 'Returned'"
+        ).all();
+
     }));
-  }
+
+    for (const loan of loans) {
+
+        const days = daysLate(loan);
+
+        // Send email when loan first becomes overdue
+        if (days >= 1 && loan.status !== 'Overdue' && loan.status !== 'Missing') {
+
+            try {
+                await sendDemoEmail(loan);
+            }
+            catch (error) {
+                console.log('Email could not be sent: ' + error.message);
+            }
+        }
+
+        // Update overdue and missing status
+        if (days >= 1) {
+
+            await db.exclusive(() => transaction(() => {
+
+                sql.prepare('UPDATE LoanTransactions SET status = ? WHERE transactionID = ?')
+                    .run(days >= 31 ? 'Missing' : 'Overdue', loan.transactionID);
+
+                if (days >= 31) {
+                    sql.prepare("UPDATE Assets SET status = 'Missing', version = version + 1 WHERE assetID = ? AND status != 'Missing'")
+                        .run(loan.assetID);
+                }
+
+            }));
+        }
+    }
+}
+
+
+
+
+
+
+ // async function runDailyCheck() {
+   // return db.exclusive(() => transaction(() => {
+     // const loans = sql.prepare("SELECT * FROM LoanTransactions WHERE status != 'Returned'").all();
+  //    for (const loan of loans) {
+      //  const days = daysLate(loan);
+       // if (days >= 1) sql.prepare('UPDATE LoanTransactions SET status = ? WHERE transactionID = ?')
+       //   .run(days >= 31 ? 'Missing' : 'Overdue', loan.transactionID);
+      //  if (days >= 31) sql.prepare("UPDATE Assets SET status = 'Missing', version = version + 1 WHERE assetID = ? AND status != 'Missing'").run(loan.assetID);
+     // }
+      // Delivery is not connected: never mark overdueEmailSent as true.
+   // }));
+ // }
   return { runDailyCheck };
 };
